@@ -1,23 +1,16 @@
-import { PDFViewer } from '@react-pdf/renderer';
-import MyDocument from './pdf/invoice.jsx';
-import './App.css'
-
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Classroom from './pages/classroom.jsx';
+import Home from './pages/home.jsx';
 
 function App() {
   return (
-    <div className='app-container'>
-      <div className='left-section'>
-        <h1>PDF Viewer</h1>
-        <p>View the PDF document above.</p>
-      </div>
-      <div className='right-section'>
-        <PDFViewer width="100%" height={500}>
-          <MyDocument />
-        </PDFViewer>
-      </div>
-    </div>
-
-
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/classroom" element={<Classroom />} />
+      </Routes>
+    </Router>
   );
 }
 
