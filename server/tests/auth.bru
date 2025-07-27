@@ -1,0 +1,21 @@
+meta {
+  name: Login Request
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "chetaningale@acpce.ac.in"
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8080
+}

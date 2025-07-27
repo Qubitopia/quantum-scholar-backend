@@ -1,0 +1,21 @@
+meta {
+  name: Verify Magic Link
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/auth/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "token": "c7b9ba362b9509d19174f7bd5ce5675a57612d335f32b67298b19f9680be4302"
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8080
+}

@@ -1,0 +1,20 @@
+meta {
+  name: Get Profile
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+vars:pre-request {
+  base_url: http://localhost:8080
+  jwt_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQyMDk0MTcsInVzZXJfaWQiOjN9.jrf4H5Hiv0-XzHJfgIadISZjzJ4Xdz0Rwjy7_msM1Ek
+}
