@@ -13,7 +13,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
 # Expose the port
-EXPOSE 8080
+EXPOSE 8000
 
 # Run the application
 CMD ["./main"]

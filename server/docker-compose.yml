@@ -4,7 +4,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:8080" # Adjust the port if your Go API uses a different one
+      - "8000:8000" # Adjust the port if your Go API uses a different one
     depends_on:
       db:
         condition: service_healthy
