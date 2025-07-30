@@ -41,7 +41,7 @@ func main() {
 
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "OK"})
+		c.JSON(200, gin.H{"status": "Github Actions is working!"})
 	})
 
 	// Auth routes (public)
