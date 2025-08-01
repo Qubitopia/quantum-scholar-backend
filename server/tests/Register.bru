@@ -1,0 +1,27 @@
+meta {
+  name: Register Admin
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/auth/register
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "chetaningale@acpce.ac.in",
+    "access_key": "student"
+  }
+}
+
+vars:pre-request {
+  base_url: http://127.0.0.1:8000
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}
+
+settings {
+  encodeUrl: true
+}

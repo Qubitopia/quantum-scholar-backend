@@ -8,6 +8,7 @@ type User struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	Email     string    `json:"email" gorm:"unique;not null"`
 	Username  string    `json:"username" gorm:"unique;not null"`
+	UserType  string    `json:"user_type" gorm:"not null"`
 	IsActive  bool      `json:"is_active" gorm:"default:true"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

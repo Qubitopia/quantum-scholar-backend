@@ -15,7 +15,7 @@ import (
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		log.Fatal("No .env file found")
 	}
 
 	// Connect to database
@@ -28,7 +28,7 @@ func main() {
 	// CORS middleware (if needed)
 	r.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
 
 		if c.Request.Method == "OPTIONS" {
@@ -51,6 +51,7 @@ func main() {
 	// Auth routes (public)
 	auth := r.Group("/auth")
 	{
+		auth.POST("/register", handlers.Register)
 		auth.POST("/login", handlers.Login)
 		auth.POST("/verify", handlers.VerifyMagicLink)
 	}
