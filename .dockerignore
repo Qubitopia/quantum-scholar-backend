@@ -1,0 +1,13 @@
+.git
+.gitignore
+server/tests/
+server/mail/mail.html
+server/README.md
+*.log
+*.env
+node_modules/
+*.bru
+*.json
+*.out
+*.exe
+*.test

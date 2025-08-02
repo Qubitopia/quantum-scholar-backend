@@ -15,7 +15,7 @@ import (
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("No .env file found")
+		log.Println("No .env file found")
 	}
 
 	// Connect to database
@@ -24,6 +24,7 @@ func main() {
 
 	// Initialize Gin router
 	r := gin.Default()
+	r.Use(gin.Recovery())
 
 	// CORS middleware (if needed)
 	r.Use(func(c *gin.Context) {
@@ -45,7 +46,7 @@ func main() {
 
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "Github Actions is working!"})
+		c.JSON(200, gin.H{"status": "ok"})
 	})
 
 	// Auth routes (public)

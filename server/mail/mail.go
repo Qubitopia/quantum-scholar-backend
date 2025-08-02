@@ -5,17 +5,9 @@ import (
 	"log"
 	"net/smtp"
 	"os"
-
-	"github.com/joho/godotenv"
 )
 
 func SendEmailTo(to string, username string, magicLink string) {
-	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	// Load environment variables
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
@@ -116,9 +108,9 @@ func SendEmailTo(to string, username string, magicLink string) {
 	auth := smtp.PlainAuth("", smtpUser, smtpPass, smtpHost)
 
 	// Send email
-	err = smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, msg)
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, msg)
 	if err != nil {
-		log.Fatal("Failed to send email:", err)
+		log.Println("Failed to send email:", err)
 	}
 
 	fmt.Println("✅ Email sent successfully.")
