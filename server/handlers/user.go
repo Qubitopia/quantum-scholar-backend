@@ -5,7 +5,7 @@ import (
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/models"
-	
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,7 +31,7 @@ func UpdateProfile(c *gin.Context) {
 	currentUser := user.(models.User)
 
 	var updateData struct {
-		Username string `json:"username"`
+		Name string `json:"Name"`
 	}
 
 	if err := c.ShouldBindJSON(&updateData); err != nil {
@@ -39,8 +39,8 @@ func UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	if updateData.Username != "" {
-		currentUser.Username = updateData.Username
+	if updateData.Name != "" {
+		currentUser.Name = updateData.Name
 	}
 
 	if err := database.DB.Save(&currentUser).Error; err != nil {

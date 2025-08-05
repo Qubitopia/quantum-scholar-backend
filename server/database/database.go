@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/Qubitopia/QuantumScholar/server/models"
-	
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -35,7 +35,15 @@ func Connect() {
 }
 
 func Migrate() {
-	err := DB.AutoMigrate(&models.User{}, &models.MagicLink{})
+	// Migrate tables in dependency order to avoid foreign key errors
+	err := DB.AutoMigrate(
+		&models.User{},
+		&models.MagicLink{},
+		&models.Test{},
+		&models.TestAssignedToUser{},
+		&models.PaymentTable{},
+		&models.Answer{},
+	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}

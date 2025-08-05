@@ -52,7 +52,6 @@ func main() {
 	// Auth routes (public)
 	auth := r.Group("/auth")
 	{
-		auth.POST("/register", handlers.Register)
 		auth.POST("/login", handlers.Login)
 		auth.POST("/verify", handlers.VerifyMagicLink)
 	}

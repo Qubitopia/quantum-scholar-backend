@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func SendEmailTo(to string, username string, magicLink string) {
+func SendEmailTo(to string, Name string, magicLink string) {
 	// Load environment variables
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
@@ -101,7 +101,7 @@ func SendEmailTo(to string, username string, magicLink string) {
 	// Email content
 	subject := "Subject: Welcome to Quantum Scholar by Qubitopia\r\n"
 	mime := "MIME-version: 1.0;\r\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n"
-	body := fmt.Sprintf(bodyTemplate, username, magicLink)
+	body := fmt.Sprintf(bodyTemplate, Name, magicLink)
 	msg := []byte(subject + mime + body)
 
 	// Auth

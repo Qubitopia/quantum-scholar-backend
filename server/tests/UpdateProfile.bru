@@ -1,0 +1,27 @@
+meta {
+  name: Update Profile
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{base_url}}/api/profile
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "Name": "Chetan Ingale"
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8000
+  jwt_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ2NDA0MDAsInVzZXJfaWQiOjF9.BwOt6gPkxcXoYygfwOlQaVGJyeFO6iYXTEefFypEi3c
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}
