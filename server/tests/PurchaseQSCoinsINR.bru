@@ -1,21 +1,23 @@
 meta {
-  name: Get Profile
+  name: Purchase QS Coins INR
   type: http
-  seq: 5
+  seq: 7
 }
 
-get {
-  url: {{base_url}}/api/profile
-  body: none
+post {
+  url: {{base_url}}/api/purchase-qscoins-inr
+  body: json
   auth: bearer
-}
-
-params:query {
-  : 
 }
 
 auth:bearer {
   token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "qscoins": 100
+  }
 }
 
 vars:pre-request {

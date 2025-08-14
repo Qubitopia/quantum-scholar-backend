@@ -1,21 +1,29 @@
 meta {
-  name: Get Profile
+  name: Create New Test
   type: http
-  seq: 5
+  seq: 10
 }
 
-get {
-  url: {{base_url}}/api/profile
-  body: none
+post {
+  url: {{base_url}}/api/test/create
+  body: json
   auth: bearer
-}
-
-params:query {
-  : 
 }
 
 auth:bearer {
   token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "test_duration": 60,
+    "total_marks": 100,
+    "number_of_questions": 10,
+    "number_of_open_ended_questions": 2,
+    "number_of_students": 30,
+    "number_of_attempts": 1,
+    "students_remaining": 30
+  }
 }
 
 vars:pre-request {

@@ -31,7 +31,8 @@ func UpdateProfile(c *gin.Context) {
 	currentUser := user.(models.User)
 
 	var updateData struct {
-		Name string `json:"Name"`
+		Name        string `json:"Name"`
+		PublicEmail string `json:"public_email"`
 	}
 
 	if err := c.ShouldBindJSON(&updateData); err != nil {
@@ -41,6 +42,10 @@ func UpdateProfile(c *gin.Context) {
 
 	if updateData.Name != "" {
 		currentUser.Name = updateData.Name
+	}
+
+	if updateData.PublicEmail != "" {
+		currentUser.PublicEmail = updateData.PublicEmail
 	}
 
 	if err := database.DB.Save(&currentUser).Error; err != nil {

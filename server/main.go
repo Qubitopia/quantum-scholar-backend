@@ -44,7 +44,6 @@ func main() {
 		c.JSON(200, gin.H{"message": "Welcome to QuantumScholar API. Visit https://github.com/Qubitopia/QuantumScholar for more information."})
 	})
 
-	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
@@ -60,8 +59,19 @@ func main() {
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware())
 	{
+		// Profile
 		api.GET("/profile", handlers.GetProfile)
 		api.PUT("/profile", handlers.UpdateProfile)
+
+		// QS Coins purchase and verification
+		api.POST("/purchase-qscoins-inr", handlers.PurchaseQSCoinsINR)
+		api.POST("/purchase-qscoins-usd", handlers.PurchaseQSCoinsUSD)
+		api.POST("/verify-razorpay-payment", handlers.VerifyRazorpayPayment)
+
+		// Test
+		api.POST("/test/create", handlers.CreateNewTest)
+		api.PUT("/test/update", handlers.UpdateTest)
+
 	}
 
 	// Start server

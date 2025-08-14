@@ -1,0 +1,27 @@
+meta {
+  name: Purchase QS Coins USD
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/purchase-qscoins-usd
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "qscoins": 100
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8000
+  jwt_token: <your_jwt_token>
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}

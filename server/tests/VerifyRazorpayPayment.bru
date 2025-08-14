@@ -1,0 +1,29 @@
+meta {
+  name: Verify Razorpay Payment
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/verify-razorpay-payment
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "razorpay_order_id": "order_test_id",
+    "razorpay_payment_id": "payment_test_id",
+    "razorpay_signature": "test_signature"
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8000
+  jwt_token: <your_jwt_token>
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}

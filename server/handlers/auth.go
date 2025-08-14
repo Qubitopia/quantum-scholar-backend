@@ -38,7 +38,7 @@ func generateMagicToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func generateJWT(userID uint) (string, error) {
+func generateJWT(userID uint32) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": userID,
 		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
@@ -61,9 +61,10 @@ func Login(c *gin.Context) {
 	if result.Error != nil {
 		// Create new user if not exists
 		user = models.User{
-			Email:    req.Email,
-			Name:     req.Email,
-			IsActive: true,
+			Email:       req.Email,
+			PublicEmail: req.Email,
+			Name:        req.Email,
+			IsActive:    true,
 		}
 		if err := database.DB.Create(&user).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
@@ -89,7 +90,6 @@ func Login(c *gin.Context) {
 		UserID:    user.ID,
 		Token:     token,
 		ExpiresAt: time.Now().Add(expiryDuration),
-		Used:      false,
 	}
 
 	if err := database.DB.Create(&magicLink).Error; err != nil {
@@ -118,17 +118,16 @@ func VerifyMagicLink(c *gin.Context) {
 
 	// Find magic link
 	var magicLink models.MagicLink
-	result := database.DB.Preload("User").Where("token = ? AND used = ? AND expires_at > ?",
-		req.Token, false, time.Now()).First(&magicLink)
+	result := database.DB.Preload("User").Where("token = ? AND expires_at > ?",
+		req.Token, time.Now()).First(&magicLink)
 
 	if result.Error != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired magic link"})
 		return
 	}
 
-	// Mark magic link as used
-	magicLink.Used = true
-	database.DB.Save(&magicLink)
+	// Delete magic link after successful verification
+	database.DB.Delete(&magicLink)
 
 	// Generate JWT token
 	jwtToken, err := generateJWT(magicLink.User.ID)
