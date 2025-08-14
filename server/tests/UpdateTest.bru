@@ -1,0 +1,30 @@
+meta {
+  name: Update Test
+  type: http
+  seq: 20
+}
+
+put {
+  url: {{base_url}}/api/test/update
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "test_id": {{test_id}},
+    "questions_json": "{\"questions\": [\"Q1\", \"Q2\"]}",
+    "answer_json": "{\"answers\": [\"A1\", \"A2\"]}"
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8000
+  jwt_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTU3Nzg4NDcsInVzZXJfaWQiOjF9.7jKk0frPijUw7L5s4Y1955zQ60e_jupOMPLyaT75cvs
+  test_id: 1
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}

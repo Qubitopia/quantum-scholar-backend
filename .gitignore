@@ -185,3 +185,5 @@ vite.config.ts.timestamp-*
 *.log
 .env
 .DS_Store
+.ssh
+*.pub

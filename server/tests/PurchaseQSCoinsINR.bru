@@ -1,0 +1,27 @@
+meta {
+  name: Purchase QS Coins INR
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/purchase-qscoins-inr
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "qscoins": 100
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8000
+  jwt_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTU3Nzg4NDcsInVzZXJfaWQiOjF9.7jKk0frPijUw7L5s4Y1955zQ60e_jupOMPLyaT75cvs
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}

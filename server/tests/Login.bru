@@ -1,0 +1,22 @@
+meta {
+  name: Login
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "chetan.ingale007@gmail.com"
+  }
+}
+
+vars:pre-request {
+  base_url: http://127.0.0.1:8000
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}

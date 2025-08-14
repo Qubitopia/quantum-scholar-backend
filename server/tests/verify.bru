@@ -1,0 +1,22 @@
+meta {
+  name: Verify Magic Link
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/auth/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "token": "2401d9327ff9b64e058109ce8d5231242d2892a675b5d01ab190139c6be99327"
+  }
+}
+
+vars:pre-request {
+  base_url: http://localhost:8000
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}
