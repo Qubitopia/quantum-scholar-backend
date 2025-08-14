@@ -115,7 +115,7 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 		return
 	}
 
-	var req PurchaseQSCoinsINRRequest
+	var req PurchaseQSCoinsUSDRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -204,7 +204,7 @@ func VerifyRazorpayPayment(c *gin.Context) {
 
 	// Find payment record by RazorpayPaymentID
 	var payment models.PaymentTable
-	if err := database.DB.Where("razorpay_payment_id = ?", req.RazorpayOrderID).First(&payment).Error; err != nil {
+	if err := database.DB.Where("razorpay_payment_id = ?", req.RazorpayPaymentID).First(&payment).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found"})
 		return
 	}
