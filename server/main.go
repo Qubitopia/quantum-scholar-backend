@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/handlers"
@@ -18,27 +17,23 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	// Connect to database
-	database.Connect()
-	database.Migrate()
+	// Connect to PostgreSQL
+	database.ConnectPgsql()
+	database.MigratePgsql()
+
+	// Connect to Redis
+	database.ConnectRedis()
 
 	// Initialize Gin router
 	r := gin.Default()
 	r.Use(gin.Recovery())
+	r.TrustedPlatform = gin.PlatformCloudflare
 
-	// CORS middleware (if needed)
-	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+	// Rate limiting middleware
+	r.Use(middleware.RateLimitMiddleware())
 
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
+	// CORS middleware
+	r.Use(middleware.CORSMiddleware())
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Welcome to QuantumScholar API. Visit https://github.com/Qubitopia/QuantumScholar for more information."})
@@ -75,13 +70,8 @@ func main() {
 	}
 
 	// Start server
-	port := os.Getenv("SERVER_PORT")
-	if port == "" {
-		port = "8000"
-	}
-
-	log.Printf("Server starting on port %s", port)
-	if err := r.Run(":" + port); err != nil {
+	log.Printf("Server starting on port set in varible PORT in .env")
+	if err := r.Run(); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }

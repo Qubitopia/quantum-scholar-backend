@@ -13,7 +13,7 @@ import (
 
 var DB *gorm.DB
 
-func Connect() {
+func ConnectPgsql() {
 	var err error
 
 	host := os.Getenv("DB_HOST")
@@ -34,7 +34,7 @@ func Connect() {
 	log.Println("Database connected successfully")
 }
 
-func Migrate() {
+func MigratePgsql() {
 	// Migrate tables in dependency order to avoid foreign key errors
 	err := DB.AutoMigrate(
 		&models.User{},
