@@ -97,12 +97,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Generate magic link URL
 	baseURL := os.Getenv("BASE_URL")
-	magicLinkURL := fmt.Sprintf("%s/auth/verify?token=%s", baseURL, token)
 
-	// Send email using existing mail function
-	mail.SendEmailTo(user.Email, user.Name, magicLinkURL)
+	if user.Name == user.Email {
+		// Mail to new user or who has not updated their details
+		magicLinkURL := fmt.Sprintf("%s/authNewUser/verify?token=%s", baseURL, token)
+		mail.SendEmailToNewUser(user.Email, user.Name, magicLinkURL)
+	} else {
+		// Mail to old user
+		magicLinkURL := fmt.Sprintf("%s/auth/verify?token=%s", baseURL, token)
+		mail.SendEmailToOldUser(user.Email, user.Name, magicLinkURL)
+	}
 
 	c.JSON(http.StatusOK, AuthResponse{
 		Message: "Magic link sent to your email",

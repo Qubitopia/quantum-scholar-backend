@@ -1,16 +1,18 @@
 services:
-  app:
+  gin:
     build: .
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "${GIN_PORT}:${GIN_PORT}"
     depends_on:
-      db:
+      pgsql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: always
 
-  db:
+  pgsql:
     image: postgres:17
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -21,6 +23,17 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    image: redis:7
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

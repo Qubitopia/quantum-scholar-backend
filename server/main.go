@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"os"
+	"strings"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/handlers"
@@ -25,18 +25,38 @@ func main() {
 	// Initialize Gin router
 	r := gin.Default()
 	r.Use(gin.Recovery())
+	r.TrustedPlatform = gin.PlatformCloudflare
 
-	// CORS middleware (if needed)
+	// Allowed origins
+	allowedOrigins := map[string]bool{
+		"https://quantumscholar.pages.dev": true,
+		"http://localhost:3000":            true,
+		"https://localhost:3000":           true,
+		"http://127.0.0.1:3000":            true,
+		"https://127.0.0.1:3000":           true,
+	}
+
+	// CORS middleware
 	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+		origin := c.GetHeader("Origin")
+		if allowedOrigins[origin] {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Vary", "Origin")
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, Accept, X-Requested-With")
+			c.Header("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+		} else if origin != "" {
+			// Optionally, block disallowed origins explicitly
+			// c.AbortWithStatus(403); return
+			// Or just omit CORS headers; browser will block
+			c.Header("Vary", "Origin")
+		}
 
-		if c.Request.Method == "OPTIONS" {
+		if strings.EqualFold(c.Request.Method, "OPTIONS") {
 			c.AbortWithStatus(204)
 			return
 		}
-
 		c.Next()
 	})
 
@@ -75,13 +95,8 @@ func main() {
 	}
 
 	// Start server
-	port := os.Getenv("SERVER_PORT")
-	if port == "" {
-		port = "8000"
-	}
-
-	log.Printf("Server starting on port %s", port)
-	if err := r.Run(":" + port); err != nil {
+	log.Printf("Server starting on port set in varible PORT in .env")
+	if err := r.Run(); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
