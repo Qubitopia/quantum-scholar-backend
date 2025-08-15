@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"strings"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/handlers"
@@ -18,47 +17,23 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	// Connect to database
-	database.Connect()
-	database.Migrate()
+	// Connect to PostgreSQL
+	database.ConnectPgsql()
+	database.MigratePgsql()
+
+	// Connect to Redis
+	database.ConnectRedis()
 
 	// Initialize Gin router
 	r := gin.Default()
 	r.Use(gin.Recovery())
 	r.TrustedPlatform = gin.PlatformCloudflare
 
-	// Allowed origins
-	allowedOrigins := map[string]bool{
-		"https://quantumscholar.pages.dev": true,
-		"http://localhost:3000":            true,
-		"https://localhost:3000":           true,
-		"http://127.0.0.1:3000":            true,
-		"https://127.0.0.1:3000":           true,
-	}
+	// Rate limiting middleware
+	r.Use(middleware.RateLimitMiddleware())
 
 	// CORS middleware
-	r.Use(func(c *gin.Context) {
-		origin := c.GetHeader("Origin")
-		if allowedOrigins[origin] {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Vary", "Origin")
-			c.Header("Access-Control-Allow-Credentials", "true")
-			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, Accept, X-Requested-With")
-			c.Header("Access-Control-Expose-Headers", "Content-Length, Content-Type")
-		} else if origin != "" {
-			// Optionally, block disallowed origins explicitly
-			// c.AbortWithStatus(403); return
-			// Or just omit CORS headers; browser will block
-			c.Header("Vary", "Origin")
-		}
-
-		if strings.EqualFold(c.Request.Method, "OPTIONS") {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
+	r.Use(middleware.CORSMiddleware())
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Welcome to QuantumScholar API. Visit https://github.com/Qubitopia/QuantumScholar for more information."})
