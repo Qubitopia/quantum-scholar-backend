@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuantumScholar — Profile</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;margin:24px}label{display:block;margin-top:8px}input,textarea{padding:8px;width:400px}button{margin-top:12px;padding:8px 12px}</style>
+</head>
+<body>
+  <h1>Profile (simulate)</h1>
+  <p>This page GETs <code>/api/profile</code> and PUTs to <code>/api/profile</code>. It reads a token from <code>localStorage</code> key <code>qs_token</code>. If your backend uses cookies, adjust accordingly.</p>
+
+  <button id="fetchBtn">Fetch Profile</button>
+  <pre id="out">No data fetched yet.</pre>
+
+  <h2>Update Profile</h2>
+  <form id="updateForm">
+    <label>Name<input id="name" placeholder="Full name" /></label>
+    <label>Bio<textarea id="bio" rows="4" placeholder="Short bio"></textarea></label>
+    <button type="submit">Update</button>
+  </form>
+
+  <script>
+    const API_BASE = 'http://localhost:8000'
+    const out = document.getElementById('out')
+    const token = () => localStorage.getItem('qs_token')
+
+    async function fetchProfile(){
+      out.textContent = 'Fetching...'
+      try{
+  const res = await fetch(API_BASE + '/api/profile', { headers: { 'Authorization': 'Bearer ' + token() } })
+        const data = await res.json()
+        out.textContent = JSON.stringify(data, null, 2)
+        if(data.name) document.getElementById('name').value = data.name
+        if(data.bio) document.getElementById('bio').value = data.bio
+      }catch(err){ out.textContent = 'Error: ' + err.message }
+    }
+
+    document.getElementById('fetchBtn').addEventListener('click', fetchProfile)
+
+    document.getElementById('updateForm').addEventListener('submit', async (e)=>{
+      e.preventDefault()
+      const payload = { name: document.getElementById('name').value, bio: document.getElementById('bio').value }
+      out.textContent = 'Updating...'
+      try{
+  const res = await fetch(API_BASE + '/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+          body: JSON.stringify(payload)
+        })
+        const data = await res.json()
+        out.textContent = JSON.stringify(data, null, 2)
+      }catch(err){ out.textContent = 'Error: ' + err.message }
+    })
+  </script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import (
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/handlers"
 	"github.com/Qubitopia/QuantumScholar/server/middleware"
+	"github.com/Qubitopia/QuantumScholar/server/payment"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -23,6 +24,9 @@ func main() {
 
 	// Connect to Redis
 	database.ConnectRedis()
+
+	// Initialize Razorpay client
+	payment.InitRazorpayClient()
 
 	// Initialize Gin router
 	r := gin.Default()

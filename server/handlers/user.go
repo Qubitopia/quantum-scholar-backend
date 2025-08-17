@@ -31,7 +31,7 @@ func UpdateProfile(c *gin.Context) {
 	currentUser := user.(models.User)
 
 	var updateData struct {
-		Name        string `json:"Name"`
+		Name        string `json:"name"`
 		PublicEmail string `json:"public_email"`
 	}
 

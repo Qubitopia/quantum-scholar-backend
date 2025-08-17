@@ -7,8 +7,8 @@ import (
 type User struct {
 	ID          uint32    `json:"id" gorm:"primaryKey"`
 	Email       string    `json:"email" gorm:"unique;not null"`
-	PublicEmail string    `json:"public_email" gorm:"unique;not null"`
-	Name        string    `json:"Name" gorm:"unique;not null"`
+	PublicEmail string    `json:"public_email" gorm:"not null"`
+	Name        string    `json:"name" gorm:"not null"`
 	QSCoins     int64     `json:"qs_coins" gorm:"default:1500"`
 	IsActive    bool      `json:"is_active" gorm:"default:true"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -72,11 +72,13 @@ type Answer struct {
 // PaymentTable model
 type PaymentTable struct {
 	OrderID           uint32    `json:"order_id" gorm:"primaryKey"`
+	RazorpayOrderID   string    `json:"razorpay_order_id"`
 	RazorpayPaymentID string    `json:"razorpay_payment_id"`
+	RazorpaySignature string    `json:"razorpay_signature"`
 	UserID            uint32    `json:"user_id" gorm:"not null"`
-	Amount            int32     `json:"amount"`
-	Currency          string    `json:"currency" gorm:"default:'INR'"`
-	QSCoinsPurchased  int64     `json:"qs_coins_purchased" gorm:"default:0"`
+	Amount            int32     `json:"amount" gorm:"not null"`
+	Currency          string    `json:"currency" gorm:"not null"`
+	QSCoinsPurchased  int64     `json:"qs_coins_purchased" gorm:"not null"`
 	PaymentStatus     bool      `json:"payment_status" gorm:"default:false"`
 	DateTime          time.Time `json:"date_time"`
 	// Foreign keys

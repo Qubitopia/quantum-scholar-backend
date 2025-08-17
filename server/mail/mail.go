@@ -220,7 +220,7 @@ func SendEmailToOldUser(to string, Name string, magicLink string) {
 	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, msg)
 	if err != nil {
 		log.Println("Failed to send email:", err)
+	} else {
+		log.Println("✅ Email sent successfully.")
 	}
-
-	log.Println("✅ Email sent successfully.")
 }

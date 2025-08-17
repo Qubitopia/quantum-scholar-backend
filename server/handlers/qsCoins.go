@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/models"
+	"github.com/Qubitopia/QuantumScholar/server/payment"
+
 	"github.com/gin-gonic/gin"
-	razorpay "github.com/razorpay/razorpay-go"
+
 	utils "github.com/razorpay/razorpay-go/utils"
 )
 
@@ -46,16 +49,12 @@ func PurchaseQSCoinsINR(c *gin.Context) {
 		return
 	}
 
-	// Get Razorpay credentials from environment
-	key := os.Getenv("RZP_KEY_ID")
-	secret := os.Getenv("RZP_KEY_SECRET")
-	if key == "" || secret == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay credentials not set in environment"})
+	// Use global RazorpayClient
+	if payment.RazorpayClient == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay client not initialized"})
 		return
 	}
-
-	// Create Razorpay client
-	client := razorpay.NewClient(key, secret)
+	client := payment.RazorpayClient
 
 	// Step 1: Create payment record with pending status, no RazorpayPaymentID yet
 	payment := models.PaymentTable{
@@ -85,8 +84,8 @@ func PurchaseQSCoinsINR(c *gin.Context) {
 		return
 	}
 
-	// Step 3: Update payment record with RazorpayPaymentID
-	payment.RazorpayPaymentID = order["id"].(string)
+	// Step 3: Update payment record with RazorpayOrderID
+	payment.RazorpayOrderID = order["id"].(string)
 	if err := database.DB.Save(&payment).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment record", "details": err.Error()})
 		return
@@ -95,10 +94,10 @@ func PurchaseQSCoinsINR(c *gin.Context) {
 	// Return order info to frontend for payment processing
 	c.JSON(http.StatusOK, gin.H{
 		// "order":      order,
-		"payment_id": payment.RazorpayPaymentID,
-		"order_id":   payment.OrderID,
-		"amount":     req.QScoins,
-		"currency":   "INR",
+		"razorpay_order_id": payment.RazorpayOrderID,
+		"order_id":          payment.OrderID,
+		"amount":            req.QScoins,
+		"currency":          "INR",
 	})
 }
 
@@ -121,21 +120,18 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 		return
 	}
 
-	// Get Razorpay credentials from environment
-	key := os.Getenv("RZP_KEY_ID")
-	secret := os.Getenv("RZP_KEY_SECRET")
-	if key == "" || secret == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay credentials not set in environment"})
+	// Use global RazorpayClient
+	if payment.RazorpayClient == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay client not initialized"})
 		return
 	}
-
-	// Create Razorpay client
-	client := razorpay.NewClient(key, secret)
+	client := payment.RazorpayClient
 
 	// Step 1: Create payment record with pending status, no RazorpayPaymentID yet
+	var qscoinsPerUSD uint64 = 75
 	payment := models.PaymentTable{
 		UserID:           examiner.ID,
-		Amount:           int32(((req.QScoins * 100) / 75)),
+		Amount:           int32(((req.QScoins * 100) / qscoinsPerUSD)),
 		Currency:         "USD",
 		QSCoinsPurchased: int64(req.QScoins),
 		PaymentStatus:    false,
@@ -149,7 +145,7 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 	// Step 2: Create Razorpay order using DB-generated OrderID as receipt
 	receipt := "ORDER-" + fmt.Sprint(payment.OrderID)
 	orderData := map[string]interface{}{
-		"amount":          ((req.QScoins * 100) / 75), // Tokens to USD
+		"amount":          ((req.QScoins * 100) / qscoinsPerUSD), // Tokens to USD
 		"currency":        "USD",
 		"receipt":         receipt,
 		"payment_capture": 1,
@@ -160,8 +156,8 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 		return
 	}
 
-	// Step 3: Update payment record with RazorpayPaymentID
-	payment.RazorpayPaymentID = order["id"].(string)
+	// Step 3: Update payment record with RazorpayOrderID
+	payment.RazorpayOrderID = order["id"].(string)
 	if err := database.DB.Save(&payment).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment record", "details": err.Error()})
 		return
@@ -170,18 +166,34 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 	// Return order info to frontend for payment processing
 	c.JSON(http.StatusOK, gin.H{
 		// "order":      order,
-		"payment_id": payment.RazorpayPaymentID,
-		"order_id":   payment.OrderID,
-		"amount":     ((req.QScoins * 100) / 75),
-		"currency":   "USD",
+		"razorpay_payment_id": payment.RazorpayPaymentID,
+		"order_id":            payment.OrderID,
+		"amount":              ((req.QScoins * 100) / qscoinsPerUSD),
+		"currency":            "USD",
 	})
 }
 
 // Handler to verify payment and update coins
 func VerifyRazorpayPayment(c *gin.Context) {
 	var req RazorpayVerifyRequest
+	log.Println(req)
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Find payment record by Razorpay order id (should be in RazorpayOrderID field)
+	var payment models.PaymentTable
+	if err := database.DB.Where("razorpay_order_id = ?", req.RazorpayOrderID).First(&payment).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found"})
+		return
+	}
+
+	// Store the payload fields in DB (RazorpayPaymentID, RazorpaySignature)
+	payment.RazorpayPaymentID = req.RazorpayPaymentID
+	payment.RazorpaySignature = req.RazorpaySignature
+	if err := database.DB.Save(&payment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment record with Razorpay details"})
 		return
 	}
 
@@ -199,13 +211,6 @@ func VerifyRazorpayPayment(c *gin.Context) {
 	// Verify signature
 	if !utils.VerifyPaymentSignature(params, req.RazorpaySignature, secret) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment signature"})
-		return
-	}
-
-	// Find payment record by RazorpayPaymentID
-	var payment models.PaymentTable
-	if err := database.DB.Where("razorpay_payment_id = ?", req.RazorpayPaymentID).First(&payment).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found"})
 		return
 	}
 
