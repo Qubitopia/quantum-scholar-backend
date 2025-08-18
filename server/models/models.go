@@ -29,6 +29,7 @@ type MagicLink struct {
 type Test struct {
 	TestID                     uint32    `json:"test_id" gorm:"primaryKey"`
 	ExaminerID                 uint32    `json:"examiner_id" gorm:"not null"`
+	TestName                   string    `json:"test_name" gorm:"not null"`
 	QSCoins                    int64     `json:"qs_coins" gorm:"default:0"`
 	TestActive                 bool      `json:"test_active" gorm:"default:true"`
 	QuestionsJSON              string    `json:"questions_json" gorm:"type:jsonb"`
@@ -79,7 +80,7 @@ type PaymentTable struct {
 	Amount            int32     `json:"amount" gorm:"not null"`
 	Currency          string    `json:"currency" gorm:"not null"`
 	QSCoinsPurchased  int64     `json:"qs_coins_purchased" gorm:"not null"`
-	PaymentStatus     bool      `json:"payment_status" gorm:"default:false"`
+	PaymentStatus     string    `json:"payment_status" gorm:"default:'pending'"`
 	DateTime          time.Time `json:"date_time"`
 	// Foreign keys
 	User User `gorm:"foreignKey:UserID"`

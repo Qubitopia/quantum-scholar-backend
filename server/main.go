@@ -62,6 +62,9 @@ func main() {
 		api.GET("/profile", handlers.GetProfile)
 		api.PUT("/profile", handlers.UpdateProfile)
 
+		// Orders
+		api.GET("/orders", handlers.GetAllOrdersByUser)
+
 		// QS Coins purchase and verification
 		api.POST("/purchase-qscoins-inr", handlers.PurchaseQSCoinsINR)
 		api.POST("/purchase-qscoins-usd", handlers.PurchaseQSCoinsUSD)
@@ -69,7 +72,8 @@ func main() {
 
 		// Test
 		api.POST("/test/create", handlers.CreateNewTest)
-		api.PUT("/test/update", handlers.UpdateTest)
+		api.PUT("/test/update-que-ans", handlers.UpdateQuestionsAndAnswersInTest)
+		api.GET("/test", handlers.GetAllTestsCreatedByUser)
 
 	}
 

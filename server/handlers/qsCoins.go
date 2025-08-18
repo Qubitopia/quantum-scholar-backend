@@ -62,7 +62,7 @@ func PurchaseQSCoinsINR(c *gin.Context) {
 		Amount:           int32(req.QScoins),
 		Currency:         "INR",
 		QSCoinsPurchased: int64(req.QScoins),
-		PaymentStatus:    false,
+		PaymentStatus:    "pending",
 		DateTime:         time.Now(),
 	}
 	if err := database.DB.Create(&payment).Error; err != nil {
@@ -127,14 +127,15 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 	}
 	client := payment.RazorpayClient
 
+	amountInUSD := req.QScoins / 75 // 1 USD = 75 QSCoins
+
 	// Step 1: Create payment record with pending status, no RazorpayPaymentID yet
-	var qscoinsPerUSD uint64 = 75
 	payment := models.PaymentTable{
 		UserID:           examiner.ID,
-		Amount:           int32(((req.QScoins * 100) / qscoinsPerUSD)),
+		Amount:           int32(amountInUSD),
 		Currency:         "USD",
 		QSCoinsPurchased: int64(req.QScoins),
-		PaymentStatus:    false,
+		PaymentStatus:    "pending",
 		DateTime:         time.Now(),
 	}
 	if err := database.DB.Create(&payment).Error; err != nil {
@@ -145,7 +146,7 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 	// Step 2: Create Razorpay order using DB-generated OrderID as receipt
 	receipt := "ORDER-" + fmt.Sprint(payment.OrderID)
 	orderData := map[string]interface{}{
-		"amount":          ((req.QScoins * 100) / qscoinsPerUSD), // Tokens to USD
+		"amount":          amountInUSD * 100, // USD to paise
 		"currency":        "USD",
 		"receipt":         receipt,
 		"payment_capture": 1,
@@ -166,10 +167,10 @@ func PurchaseQSCoinsUSD(c *gin.Context) {
 	// Return order info to frontend for payment processing
 	c.JSON(http.StatusOK, gin.H{
 		// "order":      order,
-		"razorpay_payment_id": payment.RazorpayPaymentID,
-		"order_id":            payment.OrderID,
-		"amount":              ((req.QScoins * 100) / qscoinsPerUSD),
-		"currency":            "USD",
+		"razorpay_order_id": payment.RazorpayOrderID,
+		"order_id":          payment.OrderID,
+		"amount":            amountInUSD * 100,
+		"currency":          "USD",
 	})
 }
 
@@ -215,7 +216,7 @@ func VerifyRazorpayPayment(c *gin.Context) {
 	}
 
 	// Update payment status
-	payment.PaymentStatus = true
+	payment.PaymentStatus = "completed"
 	if err := database.DB.Save(&payment).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status"})
 		return
