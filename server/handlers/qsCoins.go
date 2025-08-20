@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +15,8 @@ import (
 	"github.com/Qubitopia/QuantumScholar/server/payment"
 
 	"github.com/gin-gonic/gin"
+
+	"gorm.io/gorm/clause"
 
 	utils "github.com/razorpay/razorpay-go/utils"
 )
@@ -183,23 +188,39 @@ func VerifyRazorpayPayment(c *gin.Context) {
 		return
 	}
 
-	// Find payment record by Razorpay order id (should be in RazorpayOrderID field)
+	// Use transaction and row-level locking to prevent race conditions
+	tx := database.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 	var payment models.PaymentTable
-	if err := database.DB.Where("razorpay_order_id = ?", req.RazorpayOrderID).First(&payment).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found"})
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("razorpay_order_id = ?", req.RazorpayOrderID).First(&payment).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found", "details": err.Error()})
+		return
+	}
+
+	if payment.PaymentStatus == "completed" {
+		tx.Rollback()
+		c.JSON(http.StatusOK, gin.H{"message": "Payment already processed"})
+		return
+	}
+
+	if payment.PaymentStatus != "pending" {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Payment is not pending nor completed"})
 		return
 	}
 
 	// Store the payload fields in DB (RazorpayPaymentID, RazorpaySignature)
 	payment.RazorpayPaymentID = req.RazorpayPaymentID
 	payment.RazorpaySignature = req.RazorpaySignature
-	if err := database.DB.Save(&payment).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment record with Razorpay details"})
-		return
-	}
 
 	secret := os.Getenv("RZP_KEY_SECRET")
 	if secret == "" {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay secret not set"})
 		return
 	}
@@ -211,28 +232,168 @@ func VerifyRazorpayPayment(c *gin.Context) {
 
 	// Verify signature
 	if !utils.VerifyPaymentSignature(params, req.RazorpaySignature, secret) {
+		tx.Rollback()
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment signature"})
 		return
 	}
 
 	// Update payment status
 	payment.PaymentStatus = "completed"
-	if err := database.DB.Save(&payment).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status"})
+	if err := tx.Save(&payment).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status", "details": err.Error()})
 		return
 	}
 
 	// Update user's QS coins
 	var user models.User
-	if err := database.DB.First(&user, payment.UserID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, payment.UserID).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found", "details": err.Error()})
 		return
 	}
 	user.QSCoins += int64(payment.QSCoinsPurchased)
-	if err := database.DB.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user coins"})
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user coins", "details": err.Error()})
 		return
 	}
 
+	tx.Commit()
 	c.JSON(http.StatusOK, gin.H{"message": "Payment verified and coins added"})
+}
+
+// RazorpayWebhookHandler handles Razorpay webhook events for order.paid webhook
+func RazorpayWebhookHandler(c *gin.Context) {
+	// 1) Read raw body for signature verification
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.String(http.StatusBadRequest, "failed to read body")
+		return
+	}
+	// Restore body for potential later use
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	// 2) Extract signature header
+	signature := c.GetHeader("X-Razorpay-Signature")
+	if signature == "" {
+		c.String(http.StatusBadRequest, "missing X-Razorpay-Signature")
+		return
+	}
+
+	// 3) Load webhook secret
+	secret := os.Getenv("RZP_WEBHOOK_SECRET")
+	if secret == "" {
+		c.String(http.StatusInternalServerError, "webhook secret not configured")
+		return
+	}
+
+	// 4) Verify signature
+	if !utils.VerifyWebhookSignature(string(bodyBytes), signature, secret) {
+		c.String(http.StatusUnauthorized, "signature verification failed")
+		return
+	}
+
+	// 5) Parse JSON into a generic map
+	var root map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &root); err != nil {
+		c.String(http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	// 6) Extract required fields using safe map navigation
+	get := func(m map[string]interface{}, keys ...string) (interface{}, bool) {
+		var cur interface{} = m
+		for _, k := range keys {
+			asMap, ok := cur.(map[string]interface{})
+			if !ok {
+				return nil, false
+			}
+			v, ok := asMap[k]
+			if !ok {
+				return nil, false
+			}
+			cur = v
+		}
+		return cur, true
+	}
+
+	// Event check for order.paid
+	if v, ok := root["event"]; ok {
+		if s, _ := v.(string); s != "order.paid" {
+			c.String(http.StatusOK, "ignored")
+			return
+		}
+	}
+
+	// Preferred order.entity fields for payment status and order_id
+	var razorpay_order_id, razorpay_payment_id, payment_status string
+
+	if v, ok := get(root, "payload", "order", "entity", "id"); ok {
+		if s, ok := v.(string); ok {
+			razorpay_order_id = s
+		}
+	}
+	if v, ok := get(root, "payload", "order", "entity", "status"); ok {
+		if s, ok := v.(string); ok {
+			payment_status = s
+		}
+	}
+	if v, ok := get(root, "payload", "payment", "entity", "id"); ok {
+		if s, ok := v.(string); ok {
+			razorpay_payment_id = s
+		}
+	}
+
+	// 7) If payment_status is 'paid', update PaymentStatus and user's QSCoins if pending, using transaction and row lock
+	if payment_status == "paid" && razorpay_order_id != "" {
+		tx := database.DB.Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+		var payment models.PaymentTable
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("razorpay_order_id = ?", razorpay_order_id).First(&payment).Error
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found", "details": err.Error()})
+			return
+		}
+		if payment.PaymentStatus == "completed" {
+			tx.Rollback()
+			c.JSON(http.StatusOK, gin.H{"message": "Payment already processed"})
+			return
+		}
+		if payment.PaymentStatus != "pending" {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Payment is not pending nor completed"})
+			return
+		}
+		// Only process if pending
+		payment.PaymentStatus = "completed"
+		payment.RazorpayPaymentID = razorpay_payment_id
+		if err := tx.Save(&payment).Error; err != nil {
+			log.Printf("Failed to update payment status for order_id=%s: %v", razorpay_order_id, err)
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status", "details": err.Error()})
+			return
+		}
+		var user models.User
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, payment.UserID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found", "details": err.Error()})
+			return
+		}
+		user.QSCoins += int64(payment.QSCoinsPurchased)
+		if err := tx.Save(&user).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user coins", "details": err.Error()})
+			return
+		}
+		tx.Commit()
+		log.Println("Webhook processed successfully")
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
