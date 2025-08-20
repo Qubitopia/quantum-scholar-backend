@@ -77,6 +77,11 @@ func main() {
 
 	}
 
+	webhook := r.Group("/webhook")
+	{
+		webhook.POST("/razorpay", handlers.RazorpayWebhookHandler)
+	}
+
 	// Start server
 	log.Printf("Server starting on port set in varible PORT in .env")
 	if err := r.Run(); err != nil {
