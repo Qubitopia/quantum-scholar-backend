@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
+	"github.com/Qubitopia/QuantumScholar/server/mail"
 	"github.com/Qubitopia/QuantumScholar/server/models"
 	"github.com/Qubitopia/QuantumScholar/server/payment"
 
@@ -260,6 +261,18 @@ func VerifyRazorpayPayment(c *gin.Context) {
 	}
 
 	tx.Commit()
+	// Send invoice email after successful payment and coin update
+	userEmail := user.Email
+	userName := user.Name
+	orderID := fmt.Sprintf("%d", payment.OrderID)
+	coinsAmount := fmt.Sprintf("%d", payment.QSCoinsPurchased)
+	currency := payment.Currency
+	rate := fmt.Sprintf("%d", payment.Amount)
+	// Call the mail function (ignore errors for now)
+	go func() {
+		defer func() { recover() }()
+		mail.SendEmailInvoiceForQSCoinsPurchase(userEmail, userName, orderID, coinsAmount, currency, rate)
+	}()
 	c.JSON(http.StatusOK, gin.H{"message": "Payment verified and coins added"})
 }
 
@@ -392,6 +405,17 @@ func RazorpayWebhookHandler(c *gin.Context) {
 			return
 		}
 		tx.Commit()
+		// Send invoice email after successful payment and coin update
+		userEmail := user.Email
+		userName := user.Name
+		orderID := fmt.Sprintf("%d", payment.OrderID)
+		coinsAmount := fmt.Sprintf("%d", payment.QSCoinsPurchased)
+		currency := payment.Currency
+		rate := fmt.Sprintf("%d", payment.Amount)
+		go func() {
+			defer func() { recover() }()
+			mail.SendEmailInvoiceForQSCoinsPurchase(userEmail, userName, orderID, coinsAmount, currency, rate)
+		}()
 		log.Println("Webhook processed successfully")
 	}
 

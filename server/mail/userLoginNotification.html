@@ -1,0 +1,122 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f7;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      background: #ffffff;
+      margin: 40px auto;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    h2 {
+      color: #d9534f;
+    }
+    p {
+      font-size: 16px;
+      color: #555;
+      line-height: 1.6;
+    }
+    .details-box {
+      margin-top: 20px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 20px;
+      background-color: #fafafa;
+    }
+    .details-box table {
+      width: 100%%;
+      border-collapse: collapse;
+    }
+    .details-box table td {
+      padding: 10px;
+      font-size: 15px;
+      color: #444;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .button {
+      background-color: #007BFF;
+      color: white !important;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 16px;
+      display: inline-block;
+      font-weight: bold;
+    }
+    .footer {
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+      margin-top: 40px;
+    }
+    .footer a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+        margin: 20px;
+      }
+      .button {
+        width: 100%%;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🔐 New Login Attempt Detected</h2>
+    <p>Hello %s,</p>
+    <p>We noticed a login attempt to your <strong>Quantum Scholar</strong> account with the following details:</p>
+
+    <div class="details-box">
+      <table>
+        <tr>
+          <td><strong>Email</strong></td>
+          <td>%s</td> <!-- User's email -->
+        </tr>
+        <tr>
+          <td><strong>Time</strong></td>
+          <td>%s</td> <!-- Timestamp -->
+        </tr>
+        <tr>
+          <td><strong>IP Address</strong></td>
+          <td>%s</td> <!-- Client IP -->
+        </tr>
+        <tr>
+          <td><strong>Device / Browser</strong></td>
+          <td>%s</td> <!-- User Agent -->
+        </tr>
+      </table>
+    </div>
+
+    <p>If this was you, you can safely ignore this email.</p>
+    <p>If this wasn't you, we recommend you to contact our support team.</p>
+
+    <div class="button-container">
+      <a href="https://quantumscholar.pages.dev/support" class="button">Contact Support</a>
+    </div>
+
+    <div class="footer">
+      <p>You are receiving this email from <strong>Quantum Scholar</strong> because of your registered account activity.<br />
+        If you need assistance, please <a href="https://quantumscholar.pages.dev/support">contact support</a>.
+      </p>
+      <p>Qubitopia Inc. | India | <a href="https://quantumscholar.pages.dev/privacypolicy">Privacy Policy</a></p>
+    </div>
+  </div>
+</body>
+</html>

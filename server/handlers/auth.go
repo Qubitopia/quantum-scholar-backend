@@ -141,6 +141,12 @@ func VerifyMagicLink(c *gin.Context) {
 		return
 	}
 
+	// Send login notification email
+	timestamp := time.Now().Format("2006-01-02 15:04:05 MST")
+	ipAddress := c.ClientIP()
+	userAgent := c.Request.UserAgent()
+	mail.SendEmailNotificationOfUserLogin(magicLink.User.Email, magicLink.User.Name, timestamp, ipAddress, userAgent)
+
 	c.JSON(http.StatusOK, AuthResponse{
 		Message: "Login successful",
 		Token:   jwtToken,
