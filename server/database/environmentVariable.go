@@ -33,6 +33,7 @@ var (
 	MAGIC_LINK_EXPIRY         string
 	BASE_URL                  string
 	API_RATE_LIMIT_PER_MINUTE string
+	EMAIL_RATE_LIMIT          string
 
 	// Razorpay Key
 	RZP_KEY_ID         string
@@ -77,6 +78,7 @@ func LoadEnvVariables() {
 	MAGIC_LINK_EXPIRY = getEnv("MAGIC_LINK_EXPIRY")
 	BASE_URL = getEnv("BASE_URL")
 	API_RATE_LIMIT_PER_MINUTE = getEnv("API_RATE_LIMIT_PER_MINUTE")
+	EMAIL_RATE_LIMIT = getEnv("EMAIL_RATE_LIMIT")
 
 	// Razorpay Key
 	RZP_KEY_ID = getEnv("RZP_KEY_ID")

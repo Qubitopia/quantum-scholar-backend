@@ -64,7 +64,7 @@ func sendEmail(to string, subject string, body string) error {
 	return nil
 }
 
-func SendEmailToNewUser(to string, Name string, magicLink string) {
+func SendEmailToNewUser(to string, Name string, magicLink string) error {
 	// Email content
 	subject := "Subject: " + "Welcome to Quantum Scholar by Qubitopia" + "\r\n"
 	body := fmt.Sprintf(newUserTemplate, Name, database.BASE_URL, magicLink, database.BASE_URL, database.BASE_URL)
@@ -73,12 +73,13 @@ func SendEmailToNewUser(to string, Name string, magicLink string) {
 	err := sendEmail(to, subject, body)
 	if err != nil {
 		log.Println("Failed to send email:", err)
-	} else {
-		log.Println("✅ Email sent successfully.")
+		return err
 	}
+	log.Println("✅ Email sent successfully.")
+	return nil
 }
 
-func SendEmailToOldUser(to string, Name string, magicLink string) {
+func SendEmailToOldUser(to string, Name string, magicLink string) error {
 	// Email content
 	subject := fmt.Sprintf("Subject: Welcome back, %s — your secure login link inside\r\n", Name)
 	body := fmt.Sprintf(oldUserTemplate, Name, database.BASE_URL, magicLink, database.BASE_URL, database.BASE_URL)
@@ -87,12 +88,13 @@ func SendEmailToOldUser(to string, Name string, magicLink string) {
 	err := sendEmail(to, subject, body)
 	if err != nil {
 		log.Println("Failed to send email:", err)
-	} else {
-		log.Println("✅ Email sent successfully.")
+		return err
 	}
+	log.Println("✅ Email sent successfully.")
+	return nil
 }
 
-func SendEmailInvoiceForQSCoinsPurchase(to string, Name string, order_id string, coins_amount string, currency string, rate string) {
+func SendEmailInvoiceForQSCoinsPurchase(to string, Name string, order_id string, coins_amount string, currency string, rate string) error {
 	// Email content
 	subject := fmt.Sprintf("Subject: ORDER-%s — Purchase of %s QS Coins\r\n", order_id, coins_amount)
 	body := fmt.Sprintf(invoiceTemplate, Name, coins_amount, order_id, coins_amount, currency, rate, currency, rate, database.BASE_URL, database.BASE_URL, database.BASE_URL)
@@ -101,12 +103,13 @@ func SendEmailInvoiceForQSCoinsPurchase(to string, Name string, order_id string,
 	err := sendEmail(to, subject, body)
 	if err != nil {
 		log.Println("Failed to send email:", err)
-	} else {
-		log.Println("✅ Email sent successfully.")
+		return err
 	}
+	log.Println("✅ Email sent successfully.")
+	return nil
 }
 
-func SendEmailNotificationOfUserLogin(to string, Name string, timestamp string, ipAddress string, userAgent string) {
+func SendEmailNotificationOfUserLogin(to string, Name string, timestamp string, ipAddress string, userAgent string) error {
 	// Email content
 	subject := fmt.Sprintf("Subject: New Login Attempt Detected for %s\r\n", to)
 	body := fmt.Sprintf(newLoginTemplate, Name, to, timestamp, ipAddress, userAgent, database.BASE_URL, database.BASE_URL, database.BASE_URL)
@@ -115,7 +118,8 @@ func SendEmailNotificationOfUserLogin(to string, Name string, timestamp string, 
 	err := sendEmail(to, subject, body)
 	if err != nil {
 		log.Println("Failed to send email:", err)
-	} else {
-		log.Println("✅ Email sent successfully.")
+		return err
 	}
+	log.Println("✅ Email sent successfully.")
+	return nil
 }

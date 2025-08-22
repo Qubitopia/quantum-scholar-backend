@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -53,6 +54,20 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// Rate limit: allow only one request per email
+	redisKey := "login_rate_limit:" + req.Email
+	ctx := context.Background()
+	ttl, err := database.RedisClient.TTL(ctx, redisKey).Result()
+	if err == nil && ttl > 0 {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": "Please wait some time before requesting another magic link.",
+		})
+		return
+	}
+	// Set the rate limit key
+	emailsPerMinuite, _ := time.ParseDuration(database.EMAIL_RATE_LIMIT)
+	database.RedisClient.Set(ctx, redisKey, "1", emailsPerMinuite)
+
 	// Find or create user
 	var user models.User
 	result := database.DB.Where("email = ?", req.Email).First(&user)
@@ -99,11 +114,19 @@ func Login(c *gin.Context) {
 	if user.Name == user.Email {
 		// Mail to new user or who has not updated their details
 		magicLinkURL := fmt.Sprintf("/authNewUser/verify?token=%s", token)
-		mail.SendEmailToNewUser(user.Email, user.Name, magicLinkURL)
+		err := mail.SendEmailToNewUser(user.Email, user.Name, magicLinkURL)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+			return
+		}
 	} else {
 		// Mail to old user
 		magicLinkURL := fmt.Sprintf("/auth/verify?token=%s", token)
-		mail.SendEmailToOldUser(user.Email, user.Name, magicLinkURL)
+		err := mail.SendEmailToOldUser(user.Email, user.Name, magicLinkURL)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, AuthResponse{
