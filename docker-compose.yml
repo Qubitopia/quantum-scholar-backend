@@ -4,7 +4,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${GIN_PORT}:${GIN_PORT}"
+      - "${PORT}:${PORT}"
     depends_on:
       pgsql:
         condition: service_healthy
@@ -15,14 +15,14 @@ services:
   pgsql:
     image: postgres:17
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${PGSQL_USER}
+      POSTGRES_PASSWORD: ${PGSQL_PASSWORD}
+      POSTGRES_DB: ${PGSQL_NAME}
       TZ: Asia/Kolkata
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${PGSQL_USER} -d ${PGSQL_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5

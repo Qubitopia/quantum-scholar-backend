@@ -5,6 +5,7 @@ import (
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/handlers"
+	"github.com/Qubitopia/QuantumScholar/server/mail"
 	"github.com/Qubitopia/QuantumScholar/server/middleware"
 	"github.com/Qubitopia/QuantumScholar/server/payment"
 
@@ -13,10 +14,13 @@ import (
 )
 
 func main() {
-	// Load environment variables
+	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
+
+	// Load environment variables into global variables
+	database.LoadEnvVariables()
 
 	// Connect to PostgreSQL
 	database.ConnectPgsql()
@@ -28,9 +32,12 @@ func main() {
 	// Initialize Razorpay client
 	payment.InitRazorpayClient()
 
+	// Initialize email
+	mail.LoadEmailTemplates()
+	mail.InitEmail()
+
 	// Initialize Gin router
 	r := gin.Default()
-	r.Use(gin.Recovery())
 	r.TrustedPlatform = gin.PlatformCloudflare
 
 	// Rate limiting middleware
@@ -83,7 +90,7 @@ func main() {
 	}
 
 	// Start server
-	log.Printf("Server starting on port set in varible PORT in .env")
+	log.Printf("Server starting on port set in variable PORT in .env")
 	if err := r.Run(); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
@@ -219,20 +218,13 @@ func VerifyRazorpayPayment(c *gin.Context) {
 	payment.RazorpayPaymentID = req.RazorpayPaymentID
 	payment.RazorpaySignature = req.RazorpaySignature
 
-	secret := os.Getenv("RZP_KEY_SECRET")
-	if secret == "" {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay secret not set"})
-		return
-	}
-
 	params := map[string]interface{}{
 		"razorpay_order_id":   req.RazorpayOrderID,
 		"razorpay_payment_id": req.RazorpayPaymentID,
 	}
 
 	// Verify signature
-	if !utils.VerifyPaymentSignature(params, req.RazorpaySignature, secret) {
+	if !utils.VerifyPaymentSignature(params, req.RazorpaySignature, database.RZP_KEY_SECRET) {
 		tx.Rollback()
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment signature"})
 		return
@@ -295,14 +287,9 @@ func RazorpayWebhookHandler(c *gin.Context) {
 	}
 
 	// 3) Load webhook secret
-	secret := os.Getenv("RZP_WEBHOOK_SECRET")
-	if secret == "" {
-		c.String(http.StatusInternalServerError, "webhook secret not configured")
-		return
-	}
 
 	// 4) Verify signature
-	if !utils.VerifyWebhookSignature(string(bodyBytes), signature, secret) {
+	if !utils.VerifyWebhookSignature(string(bodyBytes), signature, database.RZP_WEBHOOK_SECRET) {
 		c.String(http.StatusUnauthorized, "signature verification failed")
 		return
 	}

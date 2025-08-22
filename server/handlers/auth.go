@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
@@ -44,7 +43,7 @@ func generateJWT(userID uint32) (string, error) {
 		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
 	})
 
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return token.SignedString([]byte(database.JWT_SECRET))
 }
 
 func Login(c *gin.Context) {
@@ -80,7 +79,7 @@ func Login(c *gin.Context) {
 	}
 
 	// Parse expiry duration
-	expiryDuration, err := time.ParseDuration(os.Getenv("MAGIC_LINK_EXPIRY"))
+	expiryDuration, err := time.ParseDuration(database.MAGIC_LINK_EXPIRY)
 	if err != nil {
 		expiryDuration = 15 * time.Minute // Default to 15 minutes
 	}
@@ -97,15 +96,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	baseURL := os.Getenv("BASE_URL")
-
 	if user.Name == user.Email {
 		// Mail to new user or who has not updated their details
-		magicLinkURL := fmt.Sprintf("%s/authNewUser/verify?token=%s", baseURL, token)
+		magicLinkURL := fmt.Sprintf("/authNewUser/verify?token=%s", token)
 		mail.SendEmailToNewUser(user.Email, user.Name, magicLinkURL)
 	} else {
 		// Mail to old user
-		magicLinkURL := fmt.Sprintf("%s/auth/verify?token=%s", baseURL, token)
+		magicLinkURL := fmt.Sprintf("/auth/verify?token=%s", token)
 		mail.SendEmailToOldUser(user.Email, user.Name, magicLinkURL)
 	}
 
