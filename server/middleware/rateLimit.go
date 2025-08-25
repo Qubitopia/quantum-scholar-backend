@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"time"
 
@@ -12,12 +11,11 @@ import (
 
 func RateLimitMiddleware() gin.HandlerFunc {
 	rateLimit := 20
-	rateLimitStr := os.Getenv("API_RATE_LIMIT_PER_MINUTE")
-	if rateLimitStr != "" {
-		if v, err := strconv.Atoi(rateLimitStr); err == nil {
-			rateLimit = v
-		}
+	rateLimitStr := database.API_RATE_LIMIT_PER_MINUTE
+	if v, err := strconv.Atoi(rateLimitStr); err == nil {
+		rateLimit = v
 	}
+
 	return func(c *gin.Context) {
 		ctx := context.Background()
 		ip := c.ClientIP()

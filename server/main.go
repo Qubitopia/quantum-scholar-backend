@@ -5,17 +5,22 @@ import (
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
 	"github.com/Qubitopia/QuantumScholar/server/handlers"
+	"github.com/Qubitopia/QuantumScholar/server/mail"
 	"github.com/Qubitopia/QuantumScholar/server/middleware"
+	"github.com/Qubitopia/QuantumScholar/server/payment"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables
+	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
+
+	// Load environment variables into global variables
+	database.LoadEnvVariables()
 
 	// Connect to PostgreSQL
 	database.ConnectPgsql()
@@ -24,9 +29,15 @@ func main() {
 	// Connect to Redis
 	database.ConnectRedis()
 
+	// Initialize Razorpay client
+	payment.InitRazorpayClient()
+
+	// Initialize email
+	mail.LoadEmailTemplates()
+	mail.InitEmail()
+
 	// Initialize Gin router
 	r := gin.Default()
-	r.Use(gin.Recovery())
 	r.TrustedPlatform = gin.PlatformCloudflare
 
 	// Rate limiting middleware
@@ -58,6 +69,9 @@ func main() {
 		api.GET("/profile", handlers.GetProfile)
 		api.PUT("/profile", handlers.UpdateProfile)
 
+		// Orders
+		api.GET("/orders", handlers.GetAllOrdersByUser)
+
 		// QS Coins purchase and verification
 		api.POST("/purchase-qscoins-inr", handlers.PurchaseQSCoinsINR)
 		api.POST("/purchase-qscoins-usd", handlers.PurchaseQSCoinsUSD)
@@ -65,12 +79,19 @@ func main() {
 
 		// Test
 		api.POST("/test/create", handlers.CreateNewTest)
-		api.PUT("/test/update", handlers.UpdateTest)
+		api.PUT("/test/update-que-ans", handlers.UpdateQuestionsAndAnswersInTest)
+		api.GET("/test", handlers.GetAllTestsCreatedByUser)
+		api.GET("/test/:id", handlers.GetTestByID)
 
 	}
 
+	webhook := r.Group("/webhook")
+	{
+		webhook.POST("/razorpay", handlers.RazorpayWebhookHandler)
+	}
+
 	// Start server
-	log.Printf("Server starting on port set in varible PORT in .env")
+	log.Printf("Server starting on port set in variable PORT in .env")
 	if err := r.Run(); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

@@ -1,7 +1,7 @@
 package database
 
 import (
-	"os"
+	"log"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -9,14 +9,15 @@ import (
 var RedisClient *redis.Client
 
 func ConnectRedis() {
-	redisAddr := os.Getenv("DB_HOST")
-	if redisAddr == "" {
-		redisAddr = "redis:6379" // fallback default
-	}
-	if port := os.Getenv("REDIS_PORT"); port != "" {
-		redisAddr = "redis:" + port
-	}
+	// Use global variables from environmentVariable.go
+	redisAddr := REDIS_HOST + ":" + REDIS_PORT
+
 	RedisClient = redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
+
+	// Test connection
+	if err := RedisClient.Ping(RedisClient.Context()).Err(); err != nil {
+		log.Fatal("Failed to connect to Redis: " + err.Error())
+	}
 }

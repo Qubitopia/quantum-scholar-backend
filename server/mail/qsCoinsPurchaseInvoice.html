@@ -1,0 +1,131 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f7;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      background: #ffffff;
+      margin: 40px auto;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    h2 {
+      color: #333;
+    }
+    p {
+      font-size: 16px;
+      color: #555;
+      line-height: 1.6;
+    }
+    .invoice-box {
+      margin-top: 20px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 20px;
+      background-color: #fafafa;
+    }
+    .invoice-box table {
+      width: 100%%;
+      border-collapse: collapse;
+    }
+    .invoice-box table td {
+      padding: 10px;
+      font-size: 15px;
+      color: #444;
+    }
+    .invoice-box table tr.total td {
+      border-top: 2px solid #007BFF;
+      font-weight: bold;
+      color: #222;
+      font-size: 16px;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .button {
+      background-color: #007BFF;
+      color: white !important;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 16px;
+      display: inline-block;
+      font-weight: bold;
+    }
+    .footer {
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+      margin-top: 40px;
+    }
+    .footer a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+        margin: 20px;
+      }
+      .button {
+        width: 100%%;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Payment Invoice 💳</h2>
+    <p>Hi %s,</p>
+    <p>Thank you for purchasing %s QS Coins 🪙 on <strong>Quantum Scholar</strong>! Here are your order details:</p>
+
+    <div class="invoice-box">
+      <table>
+        <tr>
+          <td><strong>Order ID</strong></td>
+          <td>%s</td>
+        </tr>
+        <tr>
+          <td><strong>Purchase</strong></td>
+          <td>%s QS Coins 🪙</td>
+        </tr>
+        <tr>
+          <td><strong>Amount</strong></td>
+          <td>%s %s</td>
+        </tr>
+        <tr>
+          <td><strong>Status</strong></td>
+          <td>Paid</td>
+        </tr>
+        <tr class="total">
+          <td>Total</td>
+          <td><strong>%s %s</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="button-container">
+      <a href="%s/billing" class="button">View Order Details</a>
+    </div>
+
+    <p>If you have any questions about this invoice, please reach out to our support team.</p>
+
+    <div class="footer">
+      <p>You are receiving this email because you purchased QS Coins on Quantum Scholar.<br />
+        If you did not authorize this payment, please <a href="%s/support">contact support</a>.
+      </p>
+      <p>Qubitopia Inc. | India | <a href="%s/privacypolicy">Privacy Policy</a></p>
+    </div>
+  </div>
+</body>
+</html>

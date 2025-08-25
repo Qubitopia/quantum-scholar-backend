@@ -1,24 +1,21 @@
 meta {
-  name: Update Profile
+  name: Get Orders
   type: http
-  seq: 6
+  seq: 5
 }
 
-put {
-  url: {{base_url}}/api/profile
-  body: json
+get {
+  url: {{base_url}}/api/orders
+  body: none
   auth: bearer
+}
+
+params:query {
+  : 
 }
 
 auth:bearer {
   token: {{jwt_token}}
-}
-
-body:json {
-  {
-    "name": "Chetan Ingale",
-    "public_email": "chetan@example.com"
-  }
 }
 
 vars:pre-request {

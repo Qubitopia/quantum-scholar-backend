@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/Qubitopia/QuantumScholar/server/database"
@@ -44,7 +44,7 @@ func generateJWT(userID uint32) (string, error) {
 		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
 	})
 
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return token.SignedString([]byte(database.JWT_SECRET))
 }
 
 func Login(c *gin.Context) {
@@ -53,6 +53,20 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Rate limit: allow only one request per email
+	redisKey := "login_rate_limit:" + req.Email
+	ctx := context.Background()
+	ttl, err := database.RedisClient.TTL(ctx, redisKey).Result()
+	if err == nil && ttl > 0 {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": "Please wait some time before requesting another magic link.",
+		})
+		return
+	}
+	// Set the rate limit key
+	emailsPerMinuite, _ := time.ParseDuration(database.EMAIL_RATE_LIMIT)
+	database.RedisClient.Set(ctx, redisKey, "1", emailsPerMinuite)
 
 	// Find or create user
 	var user models.User
@@ -80,7 +94,7 @@ func Login(c *gin.Context) {
 	}
 
 	// Parse expiry duration
-	expiryDuration, err := time.ParseDuration(os.Getenv("MAGIC_LINK_EXPIRY"))
+	expiryDuration, err := time.ParseDuration(database.MAGIC_LINK_EXPIRY)
 	if err != nil {
 		expiryDuration = 15 * time.Minute // Default to 15 minutes
 	}
@@ -97,16 +111,22 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	baseURL := os.Getenv("BASE_URL")
-
 	if user.Name == user.Email {
 		// Mail to new user or who has not updated their details
-		magicLinkURL := fmt.Sprintf("%s/authNewUser/verify?token=%s", baseURL, token)
-		mail.SendEmailToNewUser(user.Email, user.Name, magicLinkURL)
+		magicLinkURL := fmt.Sprintf("/authNewUser/verify?token=%s", token)
+		err := mail.SendEmailToNewUser(user.Email, user.Name, magicLinkURL)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+			return
+		}
 	} else {
 		// Mail to old user
-		magicLinkURL := fmt.Sprintf("%s/auth/verify?token=%s", baseURL, token)
-		mail.SendEmailToOldUser(user.Email, user.Name, magicLinkURL)
+		magicLinkURL := fmt.Sprintf("/auth/verify?token=%s", token)
+		err := mail.SendEmailToOldUser(user.Email, user.Name, magicLinkURL)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, AuthResponse{
@@ -140,6 +160,12 @@ func VerifyMagicLink(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
 		return
 	}
+
+	// Send login notification email
+	timestamp := time.Now().Format("2006-01-02 15:04:05 MST")
+	ipAddress := c.ClientIP()
+	userAgent := c.Request.UserAgent()
+	mail.SendEmailNotificationOfUserLogin(magicLink.User.Email, magicLink.User.Name, timestamp, ipAddress, userAgent)
 
 	c.JSON(http.StatusOK, AuthResponse{
 		Message: "Login successful",

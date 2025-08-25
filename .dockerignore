@@ -1,13 +1,30 @@
+# Ignore version control and config
 .git
 .gitignore
+
+# Ignore test files and folders
 server/tests/
-server/mail/mail.html
 server/README.md
 *.log
 *.env
-node_modules/
+
+# Ignore node_modules in frontend
+frontend/node_modules/
+
+# Ignore Bru test files
 *.bru
-*.json
+
+# Ignore Go and test binaries
 *.out
 *.exe
 *.test
+
+# Ignore package lock and temp files
+frontend/package-lock.json
+frontend/.vite/
+frontend/.vite-temp/
+
+# Ignore OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
