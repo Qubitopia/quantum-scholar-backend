@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -155,4 +156,39 @@ func GetAllTestsCreatedByUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"tests": tests,
 	})
+}
+
+func GetTestByID(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	examiner, ok := user.(models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user from context"})
+		return
+	}
+
+	testIDParam := c.Param("id")
+	var testID uint32
+	_, err := fmt.Sscanf(testIDParam, "%d", &testID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid test id"})
+		return
+	}
+
+	var test models.Test
+	if err := database.DB.First(&test, testID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test not found"})
+		return
+	}
+
+	if test.ExaminerID != examiner.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not the owner of this test"})
+		return
+	}
+
+	c.JSON(http.StatusOK, test)
 }

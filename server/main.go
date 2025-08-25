@@ -81,6 +81,7 @@ func main() {
 		api.POST("/test/create", handlers.CreateNewTest)
 		api.PUT("/test/update-que-ans", handlers.UpdateQuestionsAndAnswersInTest)
 		api.GET("/test", handlers.GetAllTestsCreatedByUser)
+		api.GET("/test/:id", handlers.GetTestByID)
 
 	}
 

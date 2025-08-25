@@ -4,6 +4,12 @@
    <img src="assets/Qubitopia-4096x2048.png" alt="Qubitopia Logo" width="400"/>
 </p>
 
+
+<p align="center">
+   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="AGPL v3 License"/>
+</p>
+
+
 <p align="center">
    <img src="https://img.shields.io/badge/AI%20Proctoring-Powered%20by%20QuantumScholar-blueviolet?style=for-the-badge&logo=quantconnect&logoColor=white" alt="AI Proctoring Badge"/>
    <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge" alt="Status Badge"/>

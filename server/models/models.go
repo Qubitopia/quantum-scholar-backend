@@ -44,7 +44,7 @@ type Test struct {
 	DateTimeCreated            time.Time `json:"date_time_created"`
 	Paid                       bool      `json:"paid" gorm:"default:false"`
 	// Foreign keys
-	Examiner User `gorm:"foreignKey:ExaminerID"`
+	// Examiner User `gorm:"foreignKey:ExaminerID"`
 }
 
 // TestAssignedToUser model
@@ -54,7 +54,7 @@ type TestAssignedToUser struct {
 	CandidateID      uint32 `json:"candidate_id" gorm:"not null"`
 	AttemptRemaining uint8  `json:"attempt_remaining"`
 	// Foreign keys
-	Candidate User `gorm:"foreignKey:CandidateID"`
+	// Candidate User `gorm:"foreignKey:CandidateID"`
 }
 
 // Answer model
@@ -67,7 +67,7 @@ type Answer struct {
 	EvaluationJSON string    `json:"evaluation_json" gorm:"type:jsonb"`
 	AchievedMarks  uint8     `json:"achieved_marks"`
 	// Foreign keys
-	Candidate User `gorm:"foreignKey:CandidateID"`
+	// Candidate User `gorm:"foreignKey:CandidateID"`
 }
 
 // PaymentTable model
@@ -83,7 +83,7 @@ type PaymentTable struct {
 	PaymentStatus     string    `json:"payment_status" gorm:"default:'pending'"`
 	DateTime          time.Time `json:"date_time"`
 	// Foreign keys
-	User User `gorm:"foreignKey:UserID"`
+	// User User `gorm:"foreignKey:UserID"`
 }
 
 // Certificate Table
