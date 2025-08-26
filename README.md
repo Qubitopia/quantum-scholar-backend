@@ -4,11 +4,9 @@
    <img src="assets/Qubitopia-4096x2048.png" alt="Qubitopia Logo" width="400"/>
 </p>
 
-
 <p align="center">
    <img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="AGPL v3 License"/>
 </p>
-
 
 <p align="center">
    <img src="https://img.shields.io/badge/AI%20Proctoring-Powered%20by%20QuantumScholar-blueviolet?style=for-the-badge&logo=quantconnect&logoColor=white" alt="AI Proctoring Badge"/>
@@ -32,19 +30,14 @@
 - Scalable for institutions and organizations
 - Detailed reporting and analytics
 
-## Project Structure
-
-- `frontend/` — Web client for users and proctors
-- `server/` — Backend API, authentication, payment, and database logic
-
 ## Getting Started
 
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/Qubitopia/QuantumScholar.git
+   git clone https://github.com/Qubitopia/quantum-scholar-backend.git
 
-   cd QuantumScholar
+   cd quantum-scholar-backend
    ```
 
 2. Copy the environment template and update your configuration:
@@ -54,7 +47,21 @@
    # Edit .env and fill in the required values
    ```
 
-3. Start the application using Docker Compose:
+3. Build the image
+
    ```sh
+   # if using powershell
+   build.ps1 myapp my-qs-backend latest
+
+   # if using bash
+   chmod +x build.sh
+   APP_NAME=myapp IMAGE_REPO=my-qs-backend VERSION_TAG=latest build.sh
+   ```
+
+4. Start the application using Docker Compose:
+
+   ```sh
+   # update the image for gin to use my-qs-backend
+
    docker compose up
    ```

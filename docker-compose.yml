@@ -1,6 +1,6 @@
 services:
   gin:
-    build: .
+    image: chetani007/quantum-scholar-backend:amd64-latest
     env_file:
       - .env
     ports:

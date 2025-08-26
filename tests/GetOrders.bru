@@ -1,0 +1,25 @@
+meta {
+  name: Get Orders
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/orders
+  body: none
+  auth: bearer
+}
+
+params:query {
+  : 
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+vars:pre-request {
+  base_url: http://localhost:8000
+  jwt_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTY1NTY3NzEsInVzZXJfaWQiOjF9.B4nCufz30hv26Kx843ahX_3bua2zKvHBwDSekAk7QtQ
+  ~base_url: https://quantumscholar-api.20040613.xyz
+}

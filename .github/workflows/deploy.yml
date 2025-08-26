@@ -3,7 +3,7 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - backend
+      - main
 
 jobs:
   deploy:
@@ -17,8 +17,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
-            cd ~/QuantumScholar/
-            sudo docker compose down
-            git checkout backend
-            git pull origin
-            sudo docker compose up -d --build
+            cd ~/quantum-scholar-backend/
+            docker pull ${{ secrets.DOCKER_IMAGE }}
+            docker compose down
+            docker compose up -d
