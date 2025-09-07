@@ -11,14 +11,12 @@ import (
 )
 
 type CreateNewTestRequest struct {
-	TestName                   string `json:"test_name" binding:"required"`
-	TestDuration               uint8  `json:"test_duration" binding:"required"`
-	TotalMarks                 int16  `json:"total_marks" binding:"required"`
-	NumberOfQuestions          uint8  `json:"number_of_questions" binding:"required"`
-	NumberOfOpenEndedQuestions uint8  `json:"number_of_open_ended_questions" binding:"required"`
-	NumberOfStudents           uint32 `json:"number_of_students" binding:"required"`
-	NumberOfAttempts           uint8  `json:"number_of_attempts" binding:"required"`
-	StudentsRemaining          uint32 `json:"students_remaining" binding:"required"`
+	TestName                 string `json:"test_name" binding:"required"`
+	TestDuration             uint8  `json:"test_duration" binding:"required"`
+	TotalMarks               int16  `json:"total_marks" binding:"required"`
+	NumberOfQuestionsPerTest uint8  `json:"number_of_questions_per_test" binding:"required"`
+	TestStartTime            string `json:"test_start_time" binding:"required"`
+	TestEndTime              string `json:"test_end_time" binding:"required"`
 }
 
 type UpdateQuestionsAndAnswersInTestRequest struct {
@@ -46,20 +44,33 @@ func CreateNewTest(c *gin.Context) {
 		return
 	}
 
+	// Parse start and end times from string to time.Time
+	testStartTime, err := time.Parse(time.RFC3339, req.TestStartTime)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid test_start_time format. Use RFC3339 format."})
+		return
+	}
+	testEndTime, err := time.Parse(time.RFC3339, req.TestEndTime)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid test_end_time format. Use RFC3339 format."})
+		return
+	}
+
 	// Create the test in the database
 	test := models.Test{
-		ExaminerID:                 examiner.ID,
-		TestName:                   req.TestName,
-		TestDuration:               req.TestDuration,
-		TotalMarks:                 req.TotalMarks,
-		NumberOfQuestions:          req.NumberOfQuestions,
-		NumberOfOpenEndedQuestions: req.NumberOfOpenEndedQuestions,
-		NumberOfStudents:           req.NumberOfStudents,
-		NumberOfAttempts:           req.NumberOfAttempts,
-		StudentsRemaining:          req.StudentsRemaining,
-		DateTimeCreated:            time.Now(),
-		QuestionsJSON:              "{}",
-		AnswerJSON:                 "{}",
+		ExaminerID:               examiner.ID,
+		TestName:                 req.TestName,
+		TestDuration:             req.TestDuration,
+		TotalMarks:               req.TotalMarks,
+		NumberOfQuestionsPerTest: req.NumberOfQuestionsPerTest,
+		SizeOfQuestionPool:       uint16(req.NumberOfQuestionsPerTest),
+		NumberOfTopics:           0,
+		TestStartTime:            testStartTime,
+		TestEndTime:              testEndTime,
+		CreatedAt:                time.Now(),
+		QuestionsJSON:            "{}",
+		AnswerJSON:               "{}",
+		TopicJson:                "{}",
 	}
 	if err := database.DB.Create(&test).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create test"})

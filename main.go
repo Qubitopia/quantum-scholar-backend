@@ -29,6 +29,11 @@ func main() {
 	// Connect to Redis
 	database.ConnectRedis()
 
+	// Initialize Cloudflare R2 (S3) client
+	if err := database.InitR2Client(); err != nil {
+		log.Fatal("Failed to initialize R2 client:", err)
+	}
+
 	// Initialize Razorpay client
 	payment.InitRazorpayClient()
 
@@ -82,6 +87,10 @@ func main() {
 		api.PUT("/test/update-que-ans", handlers.UpdateQuestionsAndAnswersInTest)
 		api.GET("/test", handlers.GetAllTestsCreatedByUser)
 		api.GET("/test/:id", handlers.GetTestByID)
+
+		// Image upload
+		api.POST("/upload-image", handlers.UploadImage)
+		api.GET("/image-url/:imagename", handlers.GetImageURL)
 
 	}
 

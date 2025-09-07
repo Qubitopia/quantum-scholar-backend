@@ -14,6 +14,12 @@ var (
 	SMTP_PASSWORD string
 	FROM_EMAIL    string
 
+	// Object Storage
+	OBJ_BUCKET            string
+	OBJ_ACCOUNT_ID        string
+	OBJ_ACCESS_KEY_ID     string
+	OBJ_SECRET_ACCESS_KEY string
+
 	// PostgreSQL for Docker and go
 	PGSQL_USER     string
 	PGSQL_PASSWORD string
@@ -58,6 +64,12 @@ func LoadEnvVariables() {
 	SMTP_USERNAME = getEnv("SMTP_USERNAME")
 	SMTP_PASSWORD = getEnv("SMTP_PASSWORD")
 	FROM_EMAIL = getEnv("FROM_EMAIL")
+
+	// Object Storage
+	OBJ_BUCKET = getEnv("OBJ_BUCKET")
+	OBJ_ACCOUNT_ID = getEnv("OBJ_ACCOUNT_ID")
+	OBJ_ACCESS_KEY_ID = getEnv("OBJ_ACCESS_KEY_ID")
+	OBJ_SECRET_ACCESS_KEY = getEnv("OBJ_SECRET_ACCESS_KEY")
 
 	// PostgreSQL for Docker and go
 	PGSQL_USER = getEnv("PGSQL_USER")

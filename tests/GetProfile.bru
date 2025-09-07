@@ -1,17 +1,13 @@
 meta {
-  name: Get Orders
+  name: Get Profile
   type: http
   seq: 5
 }
 
 get {
-  url: {{base_url}}/api/orders
+  url: {{base_url}}/api/profile
   body: none
   auth: bearer
-}
-
-params:query {
-  : 
 }
 
 auth:bearer {

@@ -1,0 +1,19 @@
+meta {
+  name: Get Image By Name
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/image-url/{{image}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+vars:pre-request {
+  image: ab@mail.com-2025Z-image.jpg
+}

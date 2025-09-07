@@ -1,0 +1,23 @@
+meta {
+  name: Upload Image
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{base_url}}/api/upload-image
+  body: file
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:file {
+  file: @file(D:\cheta\Pictures\Stickers\ctf-stickerb.png) @contentType(image/png)
+}
+
+settings {
+  encodeUrl: true
+}

@@ -19,16 +19,8 @@ body:json {
     "test_name": "Sample Test",
     "test_duration": 60,
     "total_marks": 100,
-    "number_of_questions": 10,
-    "number_of_open_ended_questions": 2,
-    "number_of_students": 30,
-    "number_of_attempts": 1,
-    "students_remaining": 30
+    "number_of_questions_per_test": 10,
+    "test_start_time": "2025-10-25T13:00:00.0Z",
+    "test_end_time": "2025-10-25T13:18:00.0Z"
   }
-}
-
-vars:pre-request {
-  base_url: http://localhost:8000
-  jwt_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTY1NTY3NzEsInVzZXJfaWQiOjF9.B4nCufz30hv26Kx843ahX_3bua2zKvHBwDSekAk7QtQ
-  ~base_url: https://quantumscholar-api.20040613.xyz
 }
