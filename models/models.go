@@ -9,6 +9,7 @@ type User struct {
 	Email       string    `json:"email" gorm:"unique;not null"`
 	PublicEmail string    `json:"public_email" gorm:"not null"`
 	Name        string    `json:"name" gorm:"not null"`
+	BirthDate   time.Time `json:"birth_date"`
 	QSCoins     int64     `json:"qs_coins" gorm:"default:1500"`
 	IsActive    bool      `json:"is_active" gorm:"default:true"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -56,7 +57,7 @@ type TestAssignedToUser struct {
 	CandidateID      uint32 `json:"candidate_id" gorm:"not null"`
 	AttemptRemaining uint8  `json:"attempt_remaining"`
 	// Foreign keys
-	// Candidate User `gorm:"foreignKey:CandidateID"`
+	Candidate User `gorm:"foreignKey:CandidateID"`
 }
 
 // Answer model

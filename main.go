@@ -87,6 +87,7 @@ func main() {
 		api.PUT("/test/update-que-ans", handlers.UpdateQuestionsAndAnswersInTest)
 		api.GET("/test", handlers.GetAllTestsCreatedByUser)
 		api.GET("/test/:id", handlers.GetTestByID)
+		api.PUT("/test/add-candidates", handlers.AddCandidatesToTest)
 
 		// Image upload
 		api.POST("/upload-image", handlers.UploadImage)

@@ -1,0 +1,26 @@
+meta {
+  name: Add Candidates To Test
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{base_url}}/api/test/add-candidates
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "test_id": 1,
+    "number_of_attempts": 1,
+    "candidate_emails": [
+      "candidate1@example.com",
+      "candidate2@example.com"
+    ]
+  }
+}

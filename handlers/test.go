@@ -25,6 +25,12 @@ type UpdateQuestionsAndAnswersInTestRequest struct {
 	AnswerJSON    string `json:"answer_json"`
 }
 
+type AddCandidatesToTestRequest struct {
+	TestID           uint32   `json:"test_id" binding:"required"`
+	NumberOfAttempts uint8    `json:"number_of_attempts" binding:"required"`
+	CandidateEmails      []string `json:"candidate_emails" binding:"required"`
+}
+
 func CreateNewTest(c *gin.Context) {
 	user, exists := c.Get("user")
 	if !exists {
@@ -140,26 +146,9 @@ func GetAllTestsCreatedByUser(c *gin.Context) {
 		return
 	}
 
-	type TestSummary struct {
-		TestID                     uint32    `json:"test_id"`
-		TestName                   string    `json:"test_name"`
-		QSCoins                    int64     `json:"qs_coins"`
-		TestActive                 bool      `json:"test_active"`
-		TestDuration               uint8     `json:"test_duration"`
-		TotalMarks                 int16     `json:"total_marks"`
-		NumberOfQuestions          uint8     `json:"number_of_questions"`
-		NumberOfOpenEndedQuestions uint8     `json:"number_of_open_ended_questions"`
-		NumberOfStudents           uint32    `json:"number_of_students"`
-		NumberOfAttempts           uint8     `json:"number_of_attempts"`
-		StudentsRemaining          uint32    `json:"students_remaining"`
-		DateTimeCreated            time.Time `json:"date_time_created"`
-	}
-
-	var tests []TestSummary
-	if err := database.DB.Model(&models.Test{}).
-		Where("examiner_id = ?", examiner.ID).
-		Select("test_id, test_name, qs_coins, test_active, test_duration, total_marks, number_of_questions, number_of_open_ended_questions, number_of_students, number_of_attempts, students_remaining, date_time_created").
-		Scan(&tests).Error; err != nil {
+	// Fetch all tests created by the user
+	var tests []models.Test
+	if err := database.DB.Where("examiner_id = ?", examiner.ID).Find(&tests).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tests"})
 		return
 	}
@@ -202,4 +191,69 @@ func GetTestByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, test)
+}
+
+func AddCandidatesToTest(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	examiner, ok := user.(models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user from context"})
+		return
+	}
+
+	var req AddCandidatesToTestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Fetch the test from the database
+	var test models.Test
+	if err := database.DB.First(&test, req.TestID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test not found"})
+		return
+	}
+
+	// Verify the owner
+	if test.ExaminerID != examiner.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not the owner of this test"})
+		return
+	}
+
+	// Add candidates to the TestAssignedToUser from the request, if user not found, cretate a new user with default values
+	for _, email := range req.CandidateEmails {
+		var candidate models.User
+		if err := database.DB.Where("email = ?", email).First(&candidate).Error; err != nil {
+			// Create a new user with default values
+			candidate = models.User{
+				Email:       email,
+				PublicEmail: email,
+				Name:        email,
+				QSCoins:     1500,
+				IsActive:    true,
+			}
+			if err := database.DB.Create(&candidate).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+				return
+			}
+		}
+
+		// Add the candidate to the test
+		testAssigned := models.TestAssignedToUser{
+			TestID:      test.TestID,
+			CandidateID: candidate.ID,
+			AttemptRemaining: req.NumberOfAttempts,
+		}
+		if err := database.DB.Create(&testAssigned).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add candidate to test"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Candidates added to test successfully"})
 }
