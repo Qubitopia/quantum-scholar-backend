@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -19,16 +21,36 @@ type CreateNewTestRequest struct {
 	TestEndTime              string `json:"test_end_time" binding:"required"`
 }
 
+type Question struct {
+	QuestionNumber int      `json:"questionNumber" binding:"required"`
+	Type           string   `json:"type" binding:"required"`
+	SuccessMarks   int      `json:"successMarks" binding:"required"`
+	FailureMarks   int      `json:"failureMarks" binding:"required"`
+	QuestionText   string   `json:"questionText" binding:"required"`
+	Options        []string `json:"options,omitempty"`
+	CorrectOption  int      `json:"correctOption,omitempty"`
+	CorrectOptions []int    `json:"correctOptions,omitempty"`
+	ModelAnswer    string   `json:"modelAnswer,omitempty"`
+}
+type Section struct {
+	SectionID          int        `json:"sectionId" binding:"required"`
+	Title              string     `json:"title" binding:"required"`
+	QuestionsToDisplay int        `json:"questionsToDisplay" binding:"required"`
+	Questions          []Question `json:"questions" binding:"required"`
+}
+type TestFormat struct {
+	Title    string    `json:"title" binding:"required"`
+	Sections []Section `json:"sections" binding:"required"`
+}
 type UpdateQuestionsAndAnswersInTestRequest struct {
-	TestID        uint32 `json:"test_id" binding:"required"`
-	QuestionsJSON string `json:"questions_json"`
-	AnswerJSON    string `json:"answer_json"`
+	TestID             uint32     `json:"test_id" binding:"required"`
+	QuestionAnswerJSON TestFormat `json:"test" binding:"required"`
 }
 
 type AddCandidatesToTestRequest struct {
 	TestID           uint32   `json:"test_id" binding:"required"`
 	NumberOfAttempts uint8    `json:"number_of_attempts" binding:"required"`
-	CandidateEmails      []string `json:"candidate_emails" binding:"required"`
+	CandidateEmails  []string `json:"candidate_emails" binding:"required"`
 }
 
 func CreateNewTest(c *gin.Context) {
@@ -74,8 +96,7 @@ func CreateNewTest(c *gin.Context) {
 		TestStartTime:            testStartTime,
 		TestEndTime:              testEndTime,
 		CreatedAt:                time.Now(),
-		QuestionsJSON:            "{}",
-		AnswerJSON:               "{}",
+		QuestionAnswerJSON:       "{}",
 		TopicJson:                "{}",
 	}
 	if err := database.DB.Create(&test).Error; err != nil {
@@ -117,20 +138,82 @@ func UpdateQuestionsAndAnswersInTest(c *gin.Context) {
 		return
 	}
 
-	// Update questions and answers if provided
-	if req.QuestionsJSON != "" {
-		test.QuestionsJSON = req.QuestionsJSON
-	}
-	if req.AnswerJSON != "" {
-		test.AnswerJSON = req.AnswerJSON
+	// Recursive validation of the JSON structure (Go struct fields)
+	if err := validateTestFormat(req.QuestionAnswerJSON); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
+	questionAnswerJSONBytes, err := json.Marshal(req.QuestionAnswerJSON)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid question and answer format"})
+		return
+	}
+
+	log.Println(req.QuestionAnswerJSON)
+
+	// Update questions and answers in the test
+	test.QuestionAnswerJSON = string(questionAnswerJSONBytes)
+
+	// Save the updated test to the database
 	if err := database.DB.Save(&test).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update test"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Test updated successfully"})
+}
+
+// validateTestFormat recursively validates required fields in TestFormat, Section, and Question
+func validateTestFormat(tf TestFormat) error {
+	if tf.Title == "" {
+		return fmt.Errorf("test title is required")
+	}
+	if len(tf.Sections) == 0 {
+		return fmt.Errorf("at least one section is required")
+	}
+	for i, section := range tf.Sections {
+		if section.SectionID == 0 {
+			return fmt.Errorf("section %d: sectionId is required", i+1)
+		}
+		if section.Title == "" {
+			return fmt.Errorf("section %d: title is required", i+1)
+		}
+		if section.QuestionsToDisplay == 0 {
+			return fmt.Errorf("section %d: questionsToDisplay is required", i+1)
+		}
+		if len(section.Questions) == 0 {
+			return fmt.Errorf("section %d: at least one question is required", i+1)
+		}
+		for j, q := range section.Questions {
+			if q.QuestionNumber == 0 {
+				return fmt.Errorf("section %d, question %d: questionNumber is required", i+1, j+1)
+			}
+			if q.Type == "" {
+				return fmt.Errorf("section %d, question %d: type is required", i+1, j+1)
+			}
+			if q.QuestionText == "" {
+				return fmt.Errorf("section %d, question %d: questionText is required", i+1, j+1)
+			}
+			if q.SuccessMarks <= 0 {
+				return fmt.Errorf("section %d, question %d: successMarks is required", i+1, j+1)
+			}
+			if q.FailureMarks > 0 {
+				return fmt.Errorf("section %d, question %d: failureMarks should be zero or negative", i+1, j+1)
+			}
+			log.Println(len(q.Options))
+			if q.Type == "mcq" && (len(q.Options) < 2 || (q.CorrectOption < 1 || q.CorrectOption > len(q.Options))) {
+				return fmt.Errorf("section %d, question %d: mcq type requires at least 2 options and a correct option", i+1, j+1)
+			}
+			if q.Type == "msq" && (len(q.Options) < 2 || len(q.CorrectOptions) == 0) {
+				return fmt.Errorf("section %d, question %d: msq type requires at least 2 options and at least one correct option", i+1, j+1)
+			}
+			if q.Type == "open-ended" && q.ModelAnswer == "" {
+				return fmt.Errorf("section %d, question %d: open-ended type requires a model answer", i+1, j+1)
+			}
+		}
+	}
+	return nil
 }
 
 func GetAllTestsCreatedByUser(c *gin.Context) {
@@ -245,8 +328,8 @@ func AddCandidatesToTest(c *gin.Context) {
 
 		// Add the candidate to the test
 		testAssigned := models.TestAssignedToUser{
-			TestID:      test.TestID,
-			CandidateID: candidate.ID,
+			TestID:           test.TestID,
+			CandidateID:      candidate.ID,
 			AttemptRemaining: req.NumberOfAttempts,
 		}
 		if err := database.DB.Create(&testAssigned).Error; err != nil {

@@ -16,9 +16,84 @@ auth:bearer {
 
 body:json {
   {
-    "test_id": {{test_id}},
-    "questions_json": "{\"questions\": [\"Q1\", \"Q2\"]}",
-    "answer_json": "{\"answers\": [\"A1\", \"A2\"]}"
+      "test_id": 1,
+      "test": {
+          "title": "Sample Test",
+          "sections": [
+              {
+                  "sectionId": 1,
+                  "title": "Mathematics",
+                  "questionsToDisplay": 5,
+                  "questions": [
+                      {
+                          "questionNumber": 1,
+                          "type": "mcq",
+                          "successMarks": 4,
+                          "failureMarks": -1,
+                          "questionText": "What is 2 + 2?",
+                          "options": [
+                              "2",
+                              "3",
+                              "4",
+                              "5"
+                          ],
+                          "correctOption": 3
+                      },
+                      {
+                          "questionNumber": 2,
+                          "type": "msq",
+                          "successMarks": 4,
+                          "failureMarks": -1,
+                          "questionText": "Select all prime numbers from the list.",
+                          "options": [
+                              "2",
+                              "4",
+                              "5",
+                              "9"
+                          ],
+                          "correctOptions": [0, 2]
+                      },
+                      {
+                          "questionNumber": 3,
+                          "type": "open-ended",
+                          "successMarks": 10,
+                          "failureMarks": 0,
+                          "questionText": "Explain the Pythagorean theorem.",
+                          "modelAnswer": "In a right-angled triangle, the square of the length of the hypotenuse is equal to the sum of the squares of the lengths of the other two sides."
+                      }
+                  ]
+              },
+              {
+                  "sectionId": 2,
+                  "title": "General Knowledge",
+                  "questionsToDisplay": 3,
+                  "questions": [
+                      {
+                          "questionNumber": 1,
+                          "type": "mcq",
+                          "successMarks": 4,
+                          "failureMarks": -1,
+                          "questionText": "Which planet is known as the Red Planet?",
+                          "options": [
+                              "Earth",
+                              "Mars",
+                              "Venus",
+                              "Jupiter"
+                          ],
+                          "correctOption": 1
+                      },
+                      {
+                          "questionNumber": 2,
+                          "type": "open-ended",
+                          "successMarks": 10,
+                          "failureMarks": 0,
+                          "questionText": "Briefly describe the importance of the United Nations.",
+                          "modelAnswer": "The United Nations plays a crucial role in promoting international cooperation, peace, and security. It provides a platform for dialogue among member states and addresses global challenges such as poverty, inequality, and climate change."
+                      }
+                  ]
+              }
+          ]
+      }
   }
 }
 

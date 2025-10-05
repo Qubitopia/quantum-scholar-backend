@@ -32,8 +32,7 @@ type Test struct {
 	ExaminerID                 uint32    `json:"examiner_id" gorm:"not null"`
 	TestName                   string    `json:"test_name" gorm:"not null"`
 	QSCoins                    int64     `json:"qs_coins" gorm:"default:0"`
-	QuestionsJSON              string    `json:"questions_json" gorm:"type:jsonb"`
-	AnswerJSON                 string    `json:"answer_json" gorm:"type:jsonb"`
+	QuestionAnswerJSON              string    `json:"questions_json" gorm:"type:jsonb"`
 	TestDuration               uint8     `json:"test_duration" gorm:"not null"`
 	TotalMarks                 int16     `json:"total_marks" gorm:"not null"`
 	NumberOfQuestionsPerTest   uint8     `json:"number_of_questions_per_test" gorm:"not null"`
