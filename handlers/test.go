@@ -53,6 +53,11 @@ type AddCandidatesToTestRequest struct {
 	CandidateEmails  []string `json:"candidate_emails" binding:"required"`
 }
 
+type RemoveCandidatesFromTestRequest struct {
+	TestID          uint32   `json:"test_id" binding:"required"`
+	CandidateEmails []string `json:"candidate_emails" binding:"required"`
+}
+
 func CreateNewTest(c *gin.Context) {
 	user, exists := c.Get("user")
 	if !exists {
@@ -308,35 +313,178 @@ func AddCandidatesToTest(c *gin.Context) {
 		return
 	}
 
-	// Add candidates to the TestAssignedToUser from the request, if user not found, cretate a new user with default values
-	for _, email := range req.CandidateEmails {
-		var candidate models.User
-		if err := database.DB.Where("email = ?", email).First(&candidate).Error; err != nil {
-			// Create a new user with default values
-			candidate = models.User{
+	// Optimization: Batch DB calls for users and assignments
+	candidateEmails := req.CandidateEmails
+	if len(candidateEmails) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No candidate emails provided"})
+		return
+	}
+
+	// 1. Fetch all existing assignments for this test and emails
+	var existingAssignments []models.TestAssignedToUser
+	if err := database.DB.Where("test_id = ? AND candidate_email IN ?", test.TestID, candidateEmails).Find(&existingAssignments).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing assignments"})
+		return
+	}
+	assignedEmails := make(map[string]struct{})
+	for _, a := range existingAssignments {
+		assignedEmails[a.CandidateEmail] = struct{}{}
+	}
+
+	// 2. Fetch all users for these emails
+	var existingUsers []models.User
+	if err := database.DB.Where("email IN ?", candidateEmails).Find(&existingUsers).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing users"})
+		return
+	}
+	userByEmail := make(map[string]models.User)
+	for _, u := range existingUsers {
+		userByEmail[u.Email] = u
+	}
+
+	// 3. Prepare new users and assignments
+	var usersToCreate []models.User
+	var assignmentsToCreate []models.TestAssignedToUser
+	for _, email := range candidateEmails {
+		if _, alreadyAssigned := assignedEmails[email]; alreadyAssigned {
+			continue // skip already assigned
+		}
+		if _, exists := userByEmail[email]; !exists {
+			// Prepare new user
+			candidate := models.User{
 				Email:       email,
 				PublicEmail: email,
 				Name:        email,
 				QSCoins:     1500,
 				IsActive:    true,
 			}
-			if err := database.DB.Create(&candidate).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-				return
-			}
+			usersToCreate = append(usersToCreate, candidate)
 		}
+		// Assignment will be created after user creation (if needed)
+	}
 
-		// Add the candidate to the test
-		testAssigned := models.TestAssignedToUser{
+	// 4. Bulk create new users
+	if len(usersToCreate) > 0 {
+		if err := database.DB.Create(&usersToCreate).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create users"})
+			return
+		}
+		// Add new users to userByEmail map
+		for _, u := range usersToCreate {
+			userByEmail[u.Email] = u
+		}
+	}
+
+	// 5. Prepare assignments for all not-yet-assigned emails
+	for _, email := range candidateEmails {
+		if _, alreadyAssigned := assignedEmails[email]; alreadyAssigned {
+			continue
+		}
+		candidate := userByEmail[email]
+		assignment := models.TestAssignedToUser{
 			TestID:           test.TestID,
 			CandidateID:      candidate.ID,
+			CandidateEmail:   candidate.Email,
 			AttemptRemaining: req.NumberOfAttempts,
 		}
-		if err := database.DB.Create(&testAssigned).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add candidate to test"})
+		assignmentsToCreate = append(assignmentsToCreate, assignment)
+	}
+
+	// 6. Bulk create assignments
+	if len(assignmentsToCreate) > 0 {
+		if err := database.DB.Create(&assignmentsToCreate).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add candidates to test"})
 			return
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Candidates added to test successfully"})
+}
+
+func GetAllCandidatesAssignedToTest(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	examiner, ok := user.(models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user from context"})
+		return
+	}
+
+	testIDParam := c.Param("id")
+	var testID uint32
+	_, err := fmt.Sscanf(testIDParam, "%d", &testID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid test id"})
+		return
+	}
+
+	var test models.Test
+	if err := database.DB.First(&test, testID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test not found"})
+		return
+	}
+
+	if test.ExaminerID != examiner.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not the owner of this test"})
+		return
+	}
+
+	// Fetch EmailID and attemptRemaining of all candidates assigned to this test
+	var result []struct {
+		CandidateEmail   string `json:"candidate_email"`
+		AttemptRemaining uint8  `json:"attempt_remaining"`
+	}
+	if err := database.DB.Model(&models.TestAssignedToUser{}).
+		Select("candidate_email, attempt_remaining").
+		Where("test_id = ?", test.TestID).
+		Scan(&result).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch candidates"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"candidates": result})
+}
+
+func RemoveCandidatesFromTest(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	examiner, ok := user.(models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user from context"})
+		return
+	}
+
+	var req RemoveCandidatesFromTestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		return
+	}
+
+	var test models.Test
+	if err := database.DB.First(&test, req.TestID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test not found"})
+		return
+	}
+
+	// Verify the owner
+	if test.ExaminerID != examiner.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not the owner of this test"})
+		return
+	}
+
+	// Remove candidates from the test
+	if err := database.DB.Where("test_id = ? AND candidate_email IN ?", test.TestID, req.CandidateEmails).Delete(&models.TestAssignedToUser{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove candidates from test"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Candidates removed from test successfully"})
 }

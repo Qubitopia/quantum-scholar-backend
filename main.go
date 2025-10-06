@@ -88,6 +88,8 @@ func main() {
 		api.GET("/test", handlers.GetAllTestsCreatedByUser)
 		api.GET("/test/:id", handlers.GetTestByID)
 		api.PUT("/test/add-candidates", handlers.AddCandidatesToTest)
+		api.GET("/test/:id/candidates", handlers.GetAllCandidatesAssignedToTest)
+		api.PUT("/test/remove-candidates", handlers.RemoveCandidatesFromTest)
 
 		// Image upload
 		api.POST("/upload-image", handlers.UploadImage)

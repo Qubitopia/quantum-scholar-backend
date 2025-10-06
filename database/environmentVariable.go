@@ -7,6 +7,9 @@ import (
 
 // Global variables for environment variables
 var (
+	// Gin for Docker and go
+	GIN_MODE string
+
 	// Email
 	SMTP_HOST     string
 	SMTP_PORT     string
@@ -57,6 +60,9 @@ func LoadEnvVariables() {
 		}
 		return val
 	}
+
+	// Gin for Docker and go
+	GIN_MODE = getEnv("GIN_MODE")
 
 	// Email
 	SMTP_HOST = getEnv("SMTP_HOST")

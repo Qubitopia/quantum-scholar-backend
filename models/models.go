@@ -54,9 +54,10 @@ type TestAssignedToUser struct {
 	SomethingID      uint32 `json:"something_id" gorm:"primaryKey"`
 	TestID           uint32 `json:"test_id" gorm:"not null"`
 	CandidateID      uint32 `json:"candidate_id" gorm:"not null"`
+	CandidateEmail string `json:"candidate_email" gorm:"not null"`
 	AttemptRemaining uint8  `json:"attempt_remaining"`
 	// Foreign keys
-	Candidate User `gorm:"foreignKey:CandidateID"`
+	// Candidate User `gorm:"foreignKey:CandidateID"`
 }
 
 // Answer model
