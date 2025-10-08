@@ -18,15 +18,14 @@ import (
 var s3Client *s3.Client
 var presignClient *s3.PresignClient
 
-func InitR2Client() error {
+func InitR2Client() {
 	// Custom AWS config for R2
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(OBJ_ACCESS_KEY_ID, OBJ_SECRET_ACCESS_KEY, "")),
 		config.WithRegion("auto"),
 	)
-
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to load R2 client config:", err)
 	}
 
 	s3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
@@ -34,8 +33,6 @@ func InitR2Client() error {
 	})
 
 	presignClient = s3.NewPresignClient(s3Client)
-
-	return nil
 }
 
 func UploadObject(objectKey, contentType string, data []byte) error {

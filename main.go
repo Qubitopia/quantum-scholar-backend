@@ -10,15 +10,9 @@ import (
 	"github.com/Qubitopia/quantum-scholar-backend/payment"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
-	}
-
 	// Load environment variables into global variables
 	database.LoadEnvVariables()
 
@@ -30,9 +24,7 @@ func main() {
 	database.ConnectRedis()
 
 	// Initialize Cloudflare R2 (S3) client
-	if err := database.InitR2Client(); err != nil {
-		log.Fatal("Failed to initialize R2 client:", err)
-	}
+	database.InitR2Client()
 
 	// Initialize Razorpay client
 	payment.InitRazorpayClient()
@@ -40,6 +32,9 @@ func main() {
 	// Initialize email
 	mail.LoadEmailTemplates()
 	mail.InitEmail()
+
+	// test
+	handlers.CreateQuestionAnswerJSON(1, 1)
 
 	// Initialize Gin router
 	r := gin.Default()
@@ -52,7 +47,7 @@ func main() {
 	r.Use(middleware.CORSMiddleware())
 
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Welcome to QuantumScholar API. Visit https://github.com/Qubitopia/QuantumScholar for more information."})
+		c.JSON(200, gin.H{"message": "Welcome to QuantumScholar API."})
 	})
 
 	r.GET("/health", func(c *gin.Context) {
@@ -64,6 +59,10 @@ func main() {
 	{
 		auth.POST("/login", handlers.Login)
 		auth.POST("/verify", handlers.VerifyMagicLink)
+
+		// Test Portal (for candidates)
+		auth.POST("/test-portal/login", handlers.TestPortalLogin)
+		auth.POST("/test-portal/verify", handlers.TestPortalVerify)
 	}
 
 	// Protected routes
@@ -100,6 +99,12 @@ func main() {
 	webhook := r.Group("/webhook")
 	{
 		webhook.POST("/razorpay", handlers.RazorpayWebhookHandler)
+	}
+
+	test_portal := r.Group("/test-portal")
+	{
+		test_portal.POST("/init", handlers.InitTestForCandidate)
+		test_portal.POST("/start", handlers.StartTestAttempt)
 	}
 
 	// Start server

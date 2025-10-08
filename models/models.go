@@ -32,7 +32,7 @@ type Test struct {
 	ExaminerID                 uint32    `json:"examiner_id" gorm:"not null"`
 	TestName                   string    `json:"test_name" gorm:"not null"`
 	QSCoins                    int64     `json:"qs_coins" gorm:"default:0"`
-	QuestionAnswerJSON              string    `json:"questions_json" gorm:"type:jsonb"`
+	QuestionAnswerJSON         string    `json:"questions_json" gorm:"type:jsonb"`
 	TestDuration               uint8     `json:"test_duration" gorm:"not null"`
 	TotalMarks                 int16     `json:"total_marks" gorm:"not null"`
 	NumberOfQuestionsPerTest   uint8     `json:"number_of_questions_per_test" gorm:"not null"`
@@ -54,18 +54,20 @@ type TestAssignedToUser struct {
 	SomethingID      uint32 `json:"something_id" gorm:"primaryKey"`
 	TestID           uint32 `json:"test_id" gorm:"not null"`
 	CandidateID      uint32 `json:"candidate_id" gorm:"not null"`
-	CandidateEmail string `json:"candidate_email" gorm:"not null"`
+	CandidateEmail   string `json:"candidate_email" gorm:"not null"`
+	AttemptsAlloted  uint8  `json:"attempts_alloted" gorm:"not null"`
 	AttemptRemaining uint8  `json:"attempt_remaining"`
-	// Foreign keys
+	// Foreign keys	
 	// Candidate User `gorm:"foreignKey:CandidateID"`
 }
 
 // Answer model
-type Answer struct {
+type AnswerAttempt struct {
 	AnswerID       uint64    `json:"answer_id" gorm:"primaryKey"`
 	TestID         uint32    `json:"test_id" gorm:"not null"`
 	CandidateID    uint32    `json:"candidate_id" gorm:"not null"`
-	DateTime       time.Time `json:"date_time"`
+	StartTime       time.Time `json:"start_time"`
+	QuestionJSON   string    `json:"question_json" gorm:"type:jsonb"`
 	AnswerJSON     string    `json:"answer_json" gorm:"type:jsonb"`
 	EvaluationJSON string    `json:"evaluation_json" gorm:"type:jsonb"`
 	AchievedMarks  uint8     `json:"achieved_marks"`

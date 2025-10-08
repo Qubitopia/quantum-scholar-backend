@@ -1,0 +1,18 @@
+meta {
+  name: Login Test Portal
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/auth/test-portal/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "birthdate": "2000-01-01"
+  }
+}

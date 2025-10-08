@@ -1,0 +1,19 @@
+meta {
+  name: Initialise Test for Candidate
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/test-portal/init
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "token": "{{token}}",
+    "test_id": "{{test_id}}"
+  }
+}

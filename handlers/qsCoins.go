@@ -318,93 +318,155 @@ func RazorpayWebhookHandler(c *gin.Context) {
 		return cur, true
 	}
 
-	// Event check for order.paid
+	// Accept both order.paid and payment.failed events
+	eventType := ""
 	if v, ok := root["event"]; ok {
-		if s, _ := v.(string); s != "order.paid" {
-			c.String(http.StatusOK, "ignored")
-			return
+		if s, _ := v.(string); s != "" {
+			eventType = s
 		}
 	}
 
-	// Preferred order.entity fields for payment status and order_id
 	var razorpay_order_id, razorpay_payment_id, payment_status string
 
-	if v, ok := get(root, "payload", "order", "entity", "id"); ok {
-		if s, ok := v.(string); ok {
-			razorpay_order_id = s
-		}
-	}
-	if v, ok := get(root, "payload", "order", "entity", "status"); ok {
-		if s, ok := v.(string); ok {
-			payment_status = s
-		}
-	}
-	if v, ok := get(root, "payload", "payment", "entity", "id"); ok {
-		if s, ok := v.(string); ok {
-			razorpay_payment_id = s
-		}
-	}
-
-	// 7) If payment_status is 'paid', update PaymentStatus and user's QSCoins if pending, using transaction and row lock
-	if payment_status == "paid" && razorpay_order_id != "" {
-		tx := database.DB.Begin()
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
+	if eventType == "order.paid" {
+		// Extract from order.entity for order.paid
+		if v, ok := get(root, "payload", "order", "entity", "id"); ok {
+			if s, ok := v.(string); ok {
+				razorpay_order_id = s
 			}
-		}()
-		var payment models.PaymentTable
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("razorpay_order_id = ?", razorpay_order_id).First(&payment).Error
-		if err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found", "details": err.Error()})
-			return
 		}
-		if payment.PaymentStatus == "completed" {
-			tx.Rollback()
-			c.JSON(http.StatusOK, gin.H{"message": "Payment already processed"})
-			return
+		if v, ok := get(root, "payload", "order", "entity", "status"); ok {
+			if s, ok := v.(string); ok {
+				payment_status = s
+			}
 		}
-		if payment.PaymentStatus != "pending" {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Payment is not pending nor completed"})
-			return
+		if v, ok := get(root, "payload", "payment", "entity", "id"); ok {
+			if s, ok := v.(string); ok {
+				razorpay_payment_id = s
+			}
 		}
-		// Only process if pending
-		payment.PaymentStatus = "completed"
-		payment.RazorpayPaymentID = razorpay_payment_id
-		if err := tx.Save(&payment).Error; err != nil {
-			log.Printf("Failed to update payment status for order_id=%s: %v", razorpay_order_id, err)
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status", "details": err.Error()})
-			return
+		// If paid, mark as completed
+		if payment_status == "paid" {
+			tx := database.DB.Begin()
+			defer func() {
+				if r := recover(); r != nil {
+					tx.Rollback()
+				}
+			}()
+			var payment models.PaymentTable
+			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("razorpay_order_id = ?", razorpay_order_id).First(&payment).Error
+			if err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found", "details": err.Error()})
+				return
+			}
+			if payment.PaymentStatus == "completed" {
+				tx.Rollback()
+				c.JSON(http.StatusOK, gin.H{"message": "Payment already processed"})
+				return
+			} else {
+				// Only process if pending
+				payment.PaymentStatus = "completed"
+				payment.RazorpayPaymentID = razorpay_payment_id
+				if err := tx.Save(&payment).Error; err != nil {
+					log.Printf("Failed to update payment status for order_id=%s: %v", razorpay_order_id, err)
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status", "details": err.Error()})
+					return
+				}
+				var user models.User
+				if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, payment.UserID).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found", "details": err.Error()})
+					return
+				}
+				user.QSCoins += int64(payment.QSCoinsPurchased)
+				if err := tx.Save(&user).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user coins", "details": err.Error()})
+					return
+				}
+				tx.Commit()
+				// Send invoice email after successful payment and coin update
+				userEmail := user.Email
+				userName := user.Name
+				orderID := fmt.Sprintf("%d", payment.OrderID)
+				coinsAmount := fmt.Sprintf("%d", payment.QSCoinsPurchased)
+				currency := payment.Currency
+				rate := fmt.Sprintf("%d", payment.Amount)
+				go func() {
+					defer func() { recover() }()
+					mail.SendEmailInvoiceForQSCoinsPurchase(userEmail, userName, orderID, coinsAmount, currency, rate)
+				}()
+			}
+			log.Println("Webhook processed successfully: order.paid")
 		}
-		var user models.User
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, payment.UserID).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found", "details": err.Error()})
-			return
-		}
-		user.QSCoins += int64(payment.QSCoinsPurchased)
-		if err := tx.Save(&user).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user coins", "details": err.Error()})
-			return
-		}
-		tx.Commit()
-		// Send invoice email after successful payment and coin update
-		userEmail := user.Email
-		userName := user.Name
-		orderID := fmt.Sprintf("%d", payment.OrderID)
-		coinsAmount := fmt.Sprintf("%d", payment.QSCoinsPurchased)
-		currency := payment.Currency
-		rate := fmt.Sprintf("%d", payment.Amount)
-		go func() {
-			defer func() { recover() }()
-			mail.SendEmailInvoiceForQSCoinsPurchase(userEmail, userName, orderID, coinsAmount, currency, rate)
-		}()
-		log.Println("Webhook processed successfully")
-	}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		return
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	} else if eventType == "payment.failed" {
+		// Extract from payment.entity for payment.failed
+		if v, ok := get(root, "payload", "payment", "entity", "order_id"); ok {
+			if s, ok := v.(string); ok {
+				razorpay_order_id = s
+			}
+		}
+		if v, ok := get(root, "payload", "payment", "entity", "id"); ok {
+			if s, ok := v.(string); ok {
+				razorpay_payment_id = s
+			}
+		}
+		if v, ok := get(root, "payload", "payment", "entity", "status"); ok {
+			if s, ok := v.(string); ok {
+				payment_status = s
+			}
+		}
+		// If failed, mark as failed if pending
+		if payment_status == "failed" {
+			tx := database.DB.Begin()
+			defer func() {
+				if r := recover(); r != nil {
+					tx.Rollback()
+				}
+			}()
+			var payment models.PaymentTable
+			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("razorpay_order_id = ?", razorpay_order_id).First(&payment).Error
+			if err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusNotFound, gin.H{"error": "Payment record not found", "details": err.Error()})
+				return
+			}
+
+			if payment.PaymentStatus == "failed" {
+				tx.Rollback()
+				c.JSON(http.StatusOK, gin.H{"message": "Payment already marked as failed"})
+				return
+			} else if payment.PaymentStatus == "completed" {
+				tx.Rollback()
+				c.JSON(http.StatusOK, gin.H{"message": "Order already marked as completed"})
+				return
+			} else if payment.PaymentStatus == "pending" {
+				payment.PaymentStatus = "failed"
+				payment.RazorpayPaymentID = razorpay_payment_id
+				if err := tx.Save(&payment).Error; err != nil {
+					log.Printf("Failed to update payment status to failed for order_id=%s: %v", razorpay_order_id, err)
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status to failed", "details": err.Error()})
+					return
+				}
+				log.Println("Webhook processed: payment.failed, order marked as failed")
+			} else {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Payment is not pending, completed, nor failed"})
+				return
+			}
+			tx.Commit()
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		return
+
+	} else {
+		c.String(http.StatusOK, "ignored")
+		return
+	}
 }

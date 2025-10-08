@@ -3,6 +3,8 @@ package database
 import (
 	"log"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 // Global variables for environment variables
@@ -52,6 +54,11 @@ var (
 
 // LoadEnvVariables loads all required environment variables into global variables
 func LoadEnvVariables() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, relying on system environment variables")
+	}
+
 	// Helper to load and check env var
 	getEnv := func(key string) string {
 		val := os.Getenv(key)

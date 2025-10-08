@@ -1,0 +1,22 @@
+meta {
+  name: Verify Test Portal Token
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/auth/test-portal/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "token": "{{token}}"
+  }
+}
+
+vars:pre-request {
+  token: fADTgYDsCHFHElxyFzjYiXqMQ05c9w60XeR6Tht/X2Wrudt2TQYqQTkM06VFB9cd
+}

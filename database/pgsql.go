@@ -34,7 +34,7 @@ func dropConflictingTables() {
 		&models.Test{},
 		&models.TestAssignedToUser{},
 		&models.PaymentTable{},
-		&models.Answer{},
+		&models.AnswerAttempt{},
 	)
 	if err != nil {
 		log.Fatal("Failed to drop tables:", err)
@@ -50,7 +50,7 @@ func MigratePgsql() {
 		&models.Test{},
 		&models.TestAssignedToUser{},
 		&models.PaymentTable{},
-		&models.Answer{},
+		&models.AnswerAttempt{},
 	)
 	if err != nil {
 		if GIN_MODE == "release" {
@@ -58,7 +58,7 @@ func MigratePgsql() {
 			log.Println("In production mode, not attempting to drop tables. Exiting.")
 			return
 		}
-		
+
 		log.Println("Failed to migrate database:", err)
 
 		log.Println("Attempting to drop conflicting tables and retry migration in 10 seconds as the GIN_MODE is not 'release'")
@@ -72,7 +72,7 @@ func MigratePgsql() {
 			&models.Test{},
 			&models.TestAssignedToUser{},
 			&models.PaymentTable{},
-			&models.Answer{},
+			&models.AnswerAttempt{},
 		)
 		if err != nil {
 			log.Fatal("Failed to migrate database even after dropping tables:", err)
