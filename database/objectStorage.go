@@ -57,3 +57,11 @@ func GetPresignedURL(objectKey string, expiresIn time.Duration) (string, error) 
 
 	return req.URL, nil
 }
+
+func DeleteObject(objectKey string) error {
+	_, err := s3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+		Bucket: &OBJ_BUCKET,
+		Key:    &objectKey,
+	})
+	return err
+}

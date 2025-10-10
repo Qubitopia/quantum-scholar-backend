@@ -89,6 +89,12 @@ func CreateNewTest(c *gin.Context) {
 		return
 	}
 
+	// Check if user has 500 or more QS Coins
+	if examiner.QSCoins < 500 {
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": "Insufficient QS Coins to create test"})
+		return
+	}
+
 	// Create the test in the database
 	test := models.Test{
 		ExaminerID:               examiner.ID,
@@ -102,12 +108,21 @@ func CreateNewTest(c *gin.Context) {
 		TestEndTime:              testEndTime,
 		CreatedAt:                time.Now(),
 		QuestionAnswerJSON:       "{}",
-		TopicJson:                "{}",
+		Images:                   []string{},
+		QSCoins:                  500,
 	}
 	if err := database.DB.Create(&test).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create test"})
 		return
 	}
+
+	// Deduct 500 QS Coins from user
+	examiner.QSCoins -= 500
+	if err := database.DB.Save(&examiner).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user QS Coins: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Test created successfully", "test_id": test.TestID})
 }
 
@@ -194,8 +209,8 @@ func validateTestFormat(tf TestFormat) error {
 			if q.QuestionNumber == 0 {
 				return fmt.Errorf("section %d, question %d: questionNumber is required", i+1, j+1)
 			}
-			if q.Type == "" {
-				return fmt.Errorf("section %d, question %d: type is required", i+1, j+1)
+			if q.Type != "mcq" && q.Type != "msq" && q.Type != "open-ended" {
+				return fmt.Errorf("section %d, question %d: invalid question type", i+1, j+1)
 			}
 			if q.QuestionText == "" {
 				return fmt.Errorf("section %d, question %d: questionText is required", i+1, j+1)
@@ -206,7 +221,7 @@ func validateTestFormat(tf TestFormat) error {
 			if q.FailureMarks > 0 {
 				return fmt.Errorf("section %d, question %d: failureMarks should be zero or negative", i+1, j+1)
 			}
-			log.Println(len(q.Options))
+			// log.Println(len(q.Options))
 			if q.Type == "mcq" && (len(q.Options) < 2 || (q.CorrectOption < 1 || q.CorrectOption > len(q.Options))) {
 				return fmt.Errorf("section %d, question %d: mcq type requires at least 2 options and a correct option", i+1, j+1)
 			}
@@ -345,6 +360,7 @@ func AddCandidatesToTest(c *gin.Context) {
 	// 3. Prepare new users and assignments
 	var usersToCreate []models.User
 	var assignmentsToCreate []models.TestAssignedToUser
+	numNewAssignments := 0
 	for _, email := range candidateEmails {
 		if _, alreadyAssigned := assignedEmails[email]; alreadyAssigned {
 			continue // skip already assigned
@@ -360,7 +376,17 @@ func AddCandidatesToTest(c *gin.Context) {
 			}
 			usersToCreate = append(usersToCreate, candidate)
 		}
+		numNewAssignments++
 		// Assignment will be created after user creation (if needed)
+	}
+
+	// Calculate total QS coins required
+	totalAttempts := numNewAssignments * int(req.NumberOfAttempts)
+	totalQSCoinsRequired := totalAttempts * 100
+
+	if examiner.QSCoins < int64(totalQSCoinsRequired) {
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": fmt.Sprintf("Insufficient QS Coins. Required: %d, Available: %d", totalQSCoinsRequired, examiner.QSCoins)})
+		return
 	}
 
 	// 4. Bulk create new users
@@ -397,6 +423,18 @@ func AddCandidatesToTest(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add candidates to test"})
 			return
 		}
+	}
+
+	// 7. Transfer QS coins from examiner to test
+	examiner.QSCoins -= int64(totalQSCoinsRequired)
+	test.QSCoins += int64(totalQSCoinsRequired)
+	if err := database.DB.Save(&examiner).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to deduct QS Coins from user"})
+		return
+	}
+	if err := database.DB.Save(&test).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add QS Coins to test"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Candidates added to test successfully"})

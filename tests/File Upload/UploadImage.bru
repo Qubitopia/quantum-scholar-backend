@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{base_url}}/api/upload-image
+  url: {{base_url}}/api/upload-image/{{test_id}}
   body: file
   auth: bearer
 }
@@ -20,4 +20,8 @@ body:file {
 
 settings {
   encodeUrl: true
+}
+
+vars:pre-request {
+  test_id: 1
 }

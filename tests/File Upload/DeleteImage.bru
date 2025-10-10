@@ -1,0 +1,22 @@
+meta {
+  name: Delete Image
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{base_url}}/api/delete-image
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "test_id": 1,
+    "filename": "chetan.ingale007@gmail.com-20251010T044400Z-image.jpg"
+  }
+}

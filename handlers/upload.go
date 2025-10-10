@@ -18,6 +18,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type DeleteImageRequest struct {
+	TestID   uint32 `json:"test_id" binding:"required"`
+	Filename string `json:"filename" binding:"required"`
+}
+
 // UploadImage handles authenticated image upload to object storage
 func UploadImage(c *gin.Context) {
 	userRaw, exists := c.Get("user")
@@ -31,6 +36,26 @@ func UploadImage(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user type"})
 		return
 	}
+
+	test_id := c.Param("test_id")
+	if test_id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing test_id parameter"})
+		return
+	}
+
+	// Check if test exists and belongs to user
+	var test models.Test
+	if err := database.DB.Where("test_id = ? AND examiner_id = ?", test_id, user.ID).First(&test).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test not found"})
+		return
+	}
+
+	// Deduct QS Coins (1 per image)
+	if test.QSCoins < 1 {
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": "Insufficient QS Coins to upload image"})
+		return
+	}
+	test.QSCoins -= 1 // Deduct 1 QS Coins per image upload
 
 	// Expect raw file body (no multipart). Enforce 10MB max size.
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 10<<20)
@@ -103,6 +128,16 @@ func UploadImage(c *gin.Context) {
 		return
 	}
 
+	// Save filename in test's Images array
+	test.Images = append(test.Images, newName)
+
+	// Update test record in database
+	if err := database.DB.Save(&test).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update test record: " + err.Error()})
+		return
+	}
+
+	// Generate presigned URL valid for 15 minutes
 	url, err := database.GetPresignedURL(newName, 15*time.Minute)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate URL: " + err.Error()})
@@ -124,4 +159,60 @@ func GetImageURL(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"url": url})
+}
+
+func DeleteImage(c *gin.Context) {
+	userRaw, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	userRaw, ok := userRaw.(models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user from context"})
+		return
+	}
+	user := userRaw.(models.User)
+
+	// Check if the image exist isn the test and belongs to the user
+	var req DeleteImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+
+	var test models.Test
+	if err := database.DB.Where("test_id = ? AND examiner_id = ?", req.TestID, user.ID).First(&test).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test not found"})
+		return
+	}
+
+	// Check if the image exists in the test's Images array
+	imageIndex := -1
+	for i, img := range test.Images {
+		if img == req.Filename {
+			imageIndex = i
+			break
+		}
+	}
+	if imageIndex == -1 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found in test"})
+		return
+	}
+	test.Images = append(test.Images[:imageIndex], test.Images[imageIndex+1:]...)
+
+	// delete the image from object storage
+	if err := database.DeleteObject(req.Filename); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete image from storage: " + err.Error()})
+		return
+	}
+
+	// update the test record in the database
+	if err := database.DB.Save(&test).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update test record: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Image deleted successfully"})
 }

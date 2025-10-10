@@ -11,6 +11,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/joho/godotenv v1.5.1
+	github.com/lib/pq v1.10.9
 	github.com/razorpay/razorpay-go v1.4.0
 	golang.org/x/image v0.30.0
 	gorm.io/driver/postgres v1.6.0

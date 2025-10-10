@@ -7,11 +7,12 @@ import (
 )
 
 var AllowedOrigins = map[string]bool{
-	"https://quantumscholar.pages.dev": true,
-	"http://localhost:3000":            true,
-	"https://localhost:3000":           true,
-	"http://127.0.0.1:3000":            true,
-	"https://127.0.0.1:3000":           true,
+	"https://quantumscholar.pages.dev":     true,
+	"https://dev.quantumscholar.pages.dev": true,
+	"http://localhost:3000":                true,
+	"https://localhost:3000":               true,
+	"http://127.0.0.1:3000":                true,
+	"https://127.0.0.1:3000":               true,
 }
 
 func CORSMiddleware() gin.HandlerFunc {

@@ -40,6 +40,20 @@ type StartTestAttemptRequest struct {
 	AttemptID uint32 `json:"attempt_id" binding:"required"`
 }
 
+type AnswerPattern struct {
+	QuestionNumber int     `json:"questionNumber"`
+	CorrectOption  *int    `json:"CorrectOption,omitempty"`
+	CorrectOptions []int   `json:"CorrectOptions,omitempty"`
+	Answer         *string `json:"answer,omitempty"`
+}
+
+type UpdateTestAttemptRequest struct {
+	Email     string `json:"email" binding:"required,email"`
+	Token     string `json:"token" binding:"required"`
+	AttemptId uint32 `json:"attempt_id" binding:"required"`
+	Answer    AnswerPattern `json:"answer" binding:"required"`
+}
+
 // APIs for testing portal
 func Generate64AsciiToken() (string, error) {
 	bytes := make([]byte, 48)
@@ -377,4 +391,53 @@ func StartTestAttempt(c *gin.Context) {
 
 	// send success response with QuestionJSON
 	c.JSON(http.StatusOK, gin.H{"message": "Test started successfully", "question_json": attempt.QuestionJSON})
+}
+
+func UpdateTestAttempt(c *gin.Context) {
+	var req UpdateTestAttemptRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if token is validon redis for the email, if yes then proceed
+	storedToken, err := database.RedisClient.Get(context.Background(), "email:"+req.Email).Result()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve token from Redis"})
+		return
+	}
+
+	if storedToken != req.Token {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	// Bump the expiry by next 15 minutes
+	if err := database.RedisClient.Expire(context.Background(), "email:"+req.Email, 15*time.Minute).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extend token expiry"})
+		return
+	}
+
+	// Check if the attempt exists and belongs to the test
+	var attempt models.AnswerAttempt
+	if err := database.DB.Where("answer_id = ?", req.AttemptId).First(&attempt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Attempt not found"})
+		return
+	}
+
+	// Update the answers and reset marks
+	answerJSONBytes, err := json.Marshal(req.Answer)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal answer"})
+		return
+	}
+	attempt.AnswerJSON = string(answerJSONBytes)
+	attempt.AchievedMarks = 0
+
+	if err := database.DB.Save(&attempt).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update test attempt"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Test attempt updated successfully"})
 }

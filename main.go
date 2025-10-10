@@ -91,8 +91,9 @@ func main() {
 		api.PUT("/test/remove-candidates", handlers.RemoveCandidatesFromTest)
 
 		// Image upload
-		api.POST("/upload-image", handlers.UploadImage)
+		api.POST("/upload-image/:test_id", handlers.UploadImage)
 		api.GET("/image-url/:imagename", handlers.GetImageURL)
+		api.DELETE("/delete-image", handlers.DeleteImage)
 
 	}
 
