@@ -106,6 +106,7 @@ func main() {
 	{
 		test_portal.POST("/init", handlers.InitTestForCandidate)
 		test_portal.POST("/start", handlers.StartTestAttempt)
+		test_portal.POST("/update-attempt", handlers.UpdateTestAttempt)
 	}
 
 	// Start server

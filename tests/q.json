@@ -1,0 +1,50 @@
+{
+    "sections": [
+        {
+            "questions": [
+                {
+                    "failureMarks": 0,
+                    "questionNumber": 3,
+                    "questionText": "Explain the Pythagorean theorem.",
+                    "successMarks": 4,
+                    "type": "open-ended"
+                },
+                {
+                    "failureMarks": -1,
+                    "options": [
+                        "2",
+                        "3",
+                        "4",
+                        "5"
+                    ],
+                    "questionNumber": 1,
+                    "questionText": "What is 2 + 2?",
+                    "successMarks": 4,
+                    "type": "mcq"
+                }
+            ],
+            "sectionId": 1,
+            "title": "Mathematics"
+        },
+        {
+            "questions": [
+                {
+                    "failureMarks": -1,
+                    "options": [
+                        "Earth",
+                        "Mars",
+                        "Venus",
+                        "Jupiter"
+                    ],
+                    "questionNumber": 1,
+                    "questionText": "Which planet is known as the Red Planet?",
+                    "successMarks": 4,
+                    "type": "mcq"
+                }
+            ],
+            "sectionId": 2,
+            "title": "General Knowledge"
+        }
+    ],
+    "title": "Sample Test"
+}

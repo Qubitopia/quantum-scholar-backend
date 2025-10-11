@@ -1,0 +1,53 @@
+meta {
+  name: Update Test attempt for Candidate
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/test-portal/start
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "token": "{{token}}",
+    "attempt_id": {{attempt_id}},
+    "answer": {
+      "sections": [
+          {
+              "answers": [
+                  {
+                      "questionNumber": 3,
+                      "CorrectOption": 2
+                  },
+                  {
+                      "questionNumber": 1,
+                      "CorrectOptions": [
+                          1,
+                          3
+                      ]
+                  }
+              ],
+              "sectionId": 1
+          },
+          {
+              "answers": [
+                  {
+                      "questionNumber": 1,
+                      "answer": "Answer to question 1"
+                  }
+              ],
+              "sectionId": 2
+          }
+      ]
+  }
+  }
+}
+
+vars:pre-request {
+  token: vz/LAIPCQelZFQ8WwDBSL5rhFwR8xpREEQXzLKlyRLuqf/HFQg61o6PWgcKY0JJs
+  attempt_id: 1
+}

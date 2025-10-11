@@ -1,11 +1,11 @@
 meta {
-  name: Initialise Test for Candidate
+  name: Start Test for Candidate
   type: http
   seq: 3
 }
 
 post {
-  url: {{base_url}}/test-portal/init
+  url: {{base_url}}/test-portal/start
   body: json
   auth: none
 }
@@ -14,11 +14,13 @@ body:json {
   {
     "email": "{{email}}",
     "token": "{{token}}",
-    "test_id": {{test_id}}
+    "test_id": {{test_id}},
+    "attempt_id": {{attempt_id}}
   }
 }
 
 vars:pre-request {
-  test_id: 1
   token: vz/LAIPCQelZFQ8WwDBSL5rhFwR8xpREEQXzLKlyRLuqf/HFQg61o6PWgcKY0JJs
+  test_id: 1
+  attempt_id: 1
 }
