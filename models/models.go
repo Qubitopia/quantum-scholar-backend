@@ -69,6 +69,7 @@ type AnswerAttempt struct {
 	TestID         uint32    `json:"test_id" gorm:"not null"`
 	CandidateID    uint32    `json:"candidate_id" gorm:"not null"`
 	StartTime      time.Time `json:"start_time"`
+	Duration       uint8     `json:"duration"`
 	QuestionJSON   string    `json:"question_json" gorm:"type:jsonb"`
 	AnswerJSON     string    `json:"answer_json" gorm:"type:jsonb"`
 	EvaluationJSON string    `json:"evaluation_json" gorm:"type:jsonb"`

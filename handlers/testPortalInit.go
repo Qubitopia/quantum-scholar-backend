@@ -41,17 +41,32 @@ type StartTestAttemptRequest struct {
 }
 
 type AnswerPattern struct {
-	QuestionNumber int     `json:"questionNumber"`
-	CorrectOption  *int    `json:"CorrectOption,omitempty"`
-	CorrectOptions []int   `json:"CorrectOptions,omitempty"`
-	Answer         *string `json:"answer,omitempty"`
+	Sections []struct {
+		SectionId int `json:"sectionId"`
+		Answers   []struct {
+			QuestionNumber int     `json:"questionNumber"`
+			CorrectOption  *int    `json:"CorrectOption,omitempty"`
+			CorrectOptions []int   `json:"CorrectOptions,omitempty"`
+			Answer         *string `json:"answer,omitempty"`
+		} `json:"answers"`
+	} `json:"sections"`
 }
 
 type UpdateTestAttemptRequest struct {
 	Email     string `json:"email" binding:"required,email"`
 	Token     string `json:"token" binding:"required"`
 	AttemptId uint32 `json:"attempt_id" binding:"required"`
-	Answer    AnswerPattern `json:"answer" binding:"required"`
+	Answer    struct {
+		Sections []struct {
+			SectionId int `json:"sectionId"`
+			Answers   []struct {
+				QuestionNumber int     `json:"questionNumber"`
+				CorrectOption  *int    `json:"CorrectOption,omitempty"`
+				CorrectOptions []int   `json:"CorrectOptions,omitempty"`
+				Answer         *string `json:"answer,omitempty"`
+			} `json:"answers"`
+		} `json:"sections"`
+	} `json:"answer" binding:"required"`
 }
 
 // APIs for testing portal
@@ -269,6 +284,7 @@ func CreateQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, erro
 		TestID:         test_id,
 		CandidateID:    candidate_id,
 		StartTime:      time.Time{},
+		Duration:       test.TestDuration,
 		QuestionJSON:   string(qb),
 		AnswerJSON:     "{}",
 		EvaluationJSON: "{}",
@@ -389,14 +405,61 @@ func StartTestAttempt(c *gin.Context) {
 		return
 	}
 
+	// Fetch test duration (in minutes) from the Test table
+	var test models.Test
+	if err := database.DB.Select("test_duration").Where("test_id = ?", req.TestID).First(&test).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve test duration"})
+		return
+	}
+
 	// send success response with QuestionJSON
-	c.JSON(http.StatusOK, gin.H{"message": "Test started successfully", "question_json": attempt.QuestionJSON})
+	c.JSON(http.StatusOK, gin.H{
+		"message":          "Test started successfully",
+		"question_json":    attempt.QuestionJSON,
+		"duration_minutes": test.TestDuration,
+	})
 }
 
 func UpdateTestAttempt(c *gin.Context) {
 	var req UpdateTestAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// Validate request structure matches UpdateTestAttemptRequest
+	if len(req.Answer.Sections) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Answer must contain at least one section"})
+		return
+	}
+	lastSectionId := 0
+	for i, section := range req.Answer.Sections {
+		if section.SectionId <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Each section must have a valid sectionId (>0)"})
+			return
+		}
+		if section.Answers == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Each section must contain answers array"})
+			return
+		}
+		lastSectionId = section.SectionId
+		for _, ans := range section.Answers {
+			if ans.QuestionNumber <= 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Each answer must have a valid questionNumber (>0)"})
+				return
+			}
+			if ans.CorrectOption == nil && len(ans.CorrectOptions) == 0 && (ans.Answer == nil || *ans.Answer == "") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Each answer must have one of: CorrectOption, CorrectOptions, or answer"})
+				return
+			}
+		}
+		// Ensure section ids are sequential and match index+1
+		if section.SectionId != i+1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "SectionId must be sequential starting from 1"})
+			return
+		}
+	}
+	if len(req.Answer.Sections) != lastSectionId {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Number of sections mismatch"})
 		return
 	}
 
@@ -422,6 +485,17 @@ func UpdateTestAttempt(c *gin.Context) {
 	var attempt models.AnswerAttempt
 	if err := database.DB.Where("answer_id = ?", req.AttemptId).First(&attempt).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Attempt not found"})
+		return
+	}
+
+	// Ensure the attempt has been started and is within the allowed duration (+5 min grace)
+	if attempt.StartTime.IsZero() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Test attempt has not been started"})
+		return
+	}
+	allowedEnd := attempt.StartTime.Add(time.Duration(attempt.Duration) * time.Minute).Add(5 * time.Minute)
+	if time.Now().After(allowedEnd) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Time window for this attempt has expired"})
 		return
 	}
 

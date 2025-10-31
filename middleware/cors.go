@@ -13,6 +13,10 @@ var AllowedOrigins = map[string]bool{
 	"https://localhost:3000":               true,
 	"http://127.0.0.1:3000":                true,
 	"https://127.0.0.1:3000":               true,
+	"http://localhost:5500":                true,
+	"https://localhost:5500":               true,
+	"http://127.0.0.1:5500":                true,
+	"https://127.0.0.1:5500":               true,
 }
 
 func CORSMiddleware() gin.HandlerFunc {
