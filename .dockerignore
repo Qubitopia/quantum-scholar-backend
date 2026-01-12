@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE and Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# Environment and Config
+.env
+.env.local
+.env.*.local
+template.env
+
+# Test Files
+tests/
+*_test.go
+*.test
+coverage.out
+coverage.html
+
+# Build and Binary
+build/
+dist/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Dependencies
+vendor/
+node_modules/
+
+# Documentation (optional - keep if needed in image)
+README.md
+LICENSE
+# docs/
+
+# Build Scripts
+build.sh
+build.ps1
+
+# Docker (already in use)
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Temporary Files
+*.tmp
+*.temp
+*.log
+
+# OS specific
+Thumbs.db
+.DS_Store
