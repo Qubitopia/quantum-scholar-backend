@@ -5,6 +5,14 @@ on:
     branches: [ "main" ]
     tags:
       - "v*"
+    paths-ignore:
+      - ".github/workflows/**"
+      - "tests/**"
+      - ".dockerignore"
+      - ".gitignore"
+      - "docker-compose.yml"
+      - "*.md"
+      - "template.env"
   pull_request:
 
 permissions:
