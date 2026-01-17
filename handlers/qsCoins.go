@@ -328,7 +328,8 @@ func RazorpayWebhookHandler(c *gin.Context) {
 
 	var razorpay_order_id, razorpay_payment_id, payment_status string
 
-	if eventType == "order.paid" {
+	switch eventType {
+	case "order.paid":
 		// Extract from order.entity for order.paid
 		if v, ok := get(root, "payload", "order", "entity", "id"); ok {
 			if s, ok := v.(string); ok {
@@ -404,7 +405,7 @@ func RazorpayWebhookHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		return
 
-	} else if eventType == "payment.failed" {
+	case "payment.failed":
 		// Extract from payment.entity for payment.failed
 		if v, ok := get(root, "payload", "payment", "entity", "order_id"); ok {
 			if s, ok := v.(string); ok {
@@ -437,15 +438,16 @@ func RazorpayWebhookHandler(c *gin.Context) {
 				return
 			}
 
-			if payment.PaymentStatus == "failed" {
+			switch payment.PaymentStatus {
+			case "failed":
 				tx.Rollback()
 				c.JSON(http.StatusOK, gin.H{"message": "Payment already marked as failed"})
 				return
-			} else if payment.PaymentStatus == "completed" {
+			case "completed":
 				tx.Rollback()
 				c.JSON(http.StatusOK, gin.H{"message": "Order already marked as completed"})
 				return
-			} else if payment.PaymentStatus == "pending" {
+			case "pending":
 				payment.PaymentStatus = "failed"
 				payment.RazorpayPaymentID = razorpay_payment_id
 				if err := tx.Save(&payment).Error; err != nil {
@@ -455,7 +457,7 @@ func RazorpayWebhookHandler(c *gin.Context) {
 					return
 				}
 				log.Println("Webhook processed: payment.failed, order marked as failed")
-			} else {
+			default:
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "Payment is not pending, completed, nor failed"})
 				return
@@ -465,7 +467,7 @@ func RazorpayWebhookHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		return
 
-	} else {
+	default:
 		c.String(http.StatusOK, "ignored")
 		return
 	}

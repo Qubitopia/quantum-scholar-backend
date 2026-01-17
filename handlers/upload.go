@@ -117,7 +117,7 @@ func UploadImage(c *gin.Context) {
 
 	// Re-encode/compress as JPEG
 	var out bytes.Buffer
-	if err := jpeg.Encode(&out, img, &jpeg.Options{Quality: 80}); err != nil { // quality can be tuned
+	if err := jpeg.Encode(&out, img, &jpeg.Options{Quality: 95}); err != nil { // quality can be tuned
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to compress image: " + err.Error()})
 		return
 	}
@@ -145,6 +145,200 @@ func UploadImage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"filename": newName, "url": url})
+}
+
+func BulkImageUpload(c *gin.Context) {
+	userRaw, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	user, ok := userRaw.(models.User)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user type"})
+		return
+	}
+
+	test_id := c.Param("test_id")
+	if test_id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing test_id parameter"})
+		return
+	}
+
+	// Check if test exists and belongs to user
+	var test models.Test
+	if err := database.DB.Where("test_id = ? AND examiner_id = ?", test_id, user.ID).First(&test).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test not found"})
+		return
+	}
+
+	// Parse multipart form with 100MB max memory
+	if err := c.Request.ParseMultipartForm(100 << 20); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse multipart form: " + err.Error()})
+		return
+	}
+
+	form := c.Request.MultipartForm
+	if form == nil || form.File == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No files in request"})
+		return
+	}
+
+	files := form.File["images"]
+	if len(files) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No images provided"})
+		return
+	}
+
+	// Check if user has enough QS Coins for all images
+	if test.QSCoins < int64(len(files)) {
+		c.JSON(http.StatusPaymentRequired, gin.H{
+			"error":     "Insufficient QS Coins to upload images",
+			"required":  len(files),
+			"available": test.QSCoins,
+		})
+		return
+	}
+
+	type UploadResult struct {
+		Filename string `json:"filename"`
+		URL      string `json:"url"`
+		Error    string `json:"error,omitempty"`
+	}
+
+	var results []UploadResult
+	var successCount int
+
+
+	for _, fileHeader := range files {
+		// Validate content type
+		contentType := strings.ToLower(fileHeader.Header.Get("Content-Type"))
+		if contentType != "image/jpeg" && contentType != "image/pjpeg" && contentType != "image/png" {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "Only image/jpeg or image/png are supported",
+			})
+			continue
+		}
+
+		// Check file size (10MB max per file)
+		if fileHeader.Size > 10<<20 {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "File too large (max 10MB)",
+			})
+			continue
+		}
+
+		// Open the file
+		file, err := fileHeader.Open()
+		if err != nil {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "Failed to open file: " + err.Error(),
+			})
+			continue
+		}
+
+		// Read file into memory
+		buf, err := io.ReadAll(file)
+		file.Close()
+		if err != nil {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "Failed to read file: " + err.Error(),
+			})
+			continue
+		}
+
+		// Decode image
+		img, format, err := image.Decode(bytes.NewReader(buf))
+		if err != nil {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "Invalid image: " + err.Error(),
+			})
+			continue
+		}
+		if format != "jpeg" && format != "png" {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "Unsupported image format",
+			})
+			continue
+		}
+
+		// Resize if width exceeds 640px while preserving aspect ratio
+		b := img.Bounds()
+		origW := b.Dx()
+		origH := b.Dy()
+		if origW > 640 {
+			newW := 640
+			newH := int(float64(origH) * (float64(newW) / float64(origW)))
+			resized := image.NewRGBA(image.Rect(0, 0, newW, newH))
+			draw.ApproxBiLinear.Scale(resized, resized.Bounds(), img, b, draw.Over, nil)
+			img = resized
+		}
+
+		// Re-encode/compress as JPEG
+		var out bytes.Buffer
+		if err := jpeg.Encode(&out, img, &jpeg.Options{Quality: 95}); err != nil {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "Failed to compress image: " + err.Error(),
+			})
+			continue
+		}
+
+		// Generate unique filename with index to avoid collisions in format" test_id/que_img/imagename-timestamp.jpg
+		now := time.Now().UTC().Format("20060102T150405Z")
+		newName := fmt.Sprintf("test_%d/que_img/%s-%s.jpg", test.TestID, fileHeader.Filename, now)
+
+		// Upload to object storage
+		if err = database.UploadObject(newName, "image/jpeg", out.Bytes()); err != nil {
+			results = append(results, UploadResult{
+				Filename: fileHeader.Filename,
+				Error:    "Failed to upload file: " + err.Error(),
+			})
+			continue
+		}
+
+		// Generate presigned URL
+		url, err := database.GetPresignedURL(newName, 15*time.Minute)
+		if err != nil {
+			results = append(results, UploadResult{
+				Filename: newName,
+				Error:    "Uploaded but failed to generate URL: " + err.Error(),
+			})
+			// Still count as success since file was uploaded
+			test.Images = append(test.Images, newName)
+			successCount++
+			continue
+		}
+
+		test.Images = append(test.Images, newName)
+		successCount++
+		results = append(results, UploadResult{
+			Filename: newName,
+			URL:      url,
+		})
+	}
+
+	// Deduct QS Coins only for successfully uploaded images
+	test.QSCoins -= int64(successCount)
+
+	// Update test record in database
+	if err := database.DB.Save(&test).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update test record: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"uploaded": successCount,
+		"total":    len(files),
+		"results":  results,
+	})
 }
 
 func GetImageURL(c *gin.Context) {

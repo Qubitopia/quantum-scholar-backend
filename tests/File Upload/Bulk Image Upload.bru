@@ -1,0 +1,64 @@
+meta {
+  name: Bulk Image Upload
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/bulk-image-upload/{{test_id}}
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:multipart-form {
+  images: 
+  images: 
+  images: 
+  images: 
+}
+
+vars:pre-request {
+  test_id: 1
+}
+
+docs {
+  # Bulk Image Upload
+  
+  Uploads multiple images to a test's question bank.
+  
+  ## Request
+  - **Method:** POST
+  - **URL:** `/api/bulk-image-upload/:test_id`
+  - **Auth:** Bearer token required
+  - **Content-Type:** multipart/form-data
+  
+  ## Form Fields
+  - `images` (required): Multiple image files (JPEG or PNG, max 10MB each)
+  
+  ## Response
+  ```json
+  {
+    "uploaded": 3,
+    "total": 5,
+    "results": [
+      {
+        "filename": "test_1/que_img/image1.jpg-20260117T120000Z.jpg",
+        "url": "https://..."
+      },
+      {
+        "filename": "image2.png",
+        "error": "File too large (max 10MB)"
+      }
+    ]
+  }
+  ```
+  
+  ## Notes
+  - Each successful upload deducts 1 QS Coin from the test
+  - Images are resized to max 640px width and compressed as JPEG
+  - Requires sufficient QS Coins for all images before upload starts
+}
