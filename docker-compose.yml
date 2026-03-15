@@ -15,7 +15,7 @@ services:
     restart: always
 
   pgsql:
-    image: postgres:17
+    image: docker.io/postgres:18.3-alpine
     environment:
       POSTGRES_USER: ${PGSQL_USER}
       POSTGRES_PASSWORD: ${PGSQL_PASSWORD}
@@ -31,11 +31,11 @@ services:
     restart: always
 
   redis:
-    image: redis:7
-    ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
+    image: docker.io/valkey/valkey:9.0.3-alpine
+    volumes:
+      - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "-h", "127.0.0.1", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -43,3 +43,4 @@ services:
 
 volumes:
   pgdata:
+  redisdata:

@@ -46,9 +46,10 @@ func main() {
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Welcome to QuantumScholar API."})
-	})
+	// Bots are an headache
+	// r.GET("/", func(c *gin.Context) {
+	// 	c.JSON(200, gin.H{"message": "Welcome to QuantumScholar API."})
+	// })
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -81,7 +82,7 @@ func main() {
 		api.POST("/purchase-qscoins-usd", handlers.PurchaseQSCoinsUSD)
 		api.POST("/verify-razorpay-payment", handlers.VerifyRazorpayPayment)
 
-		// Test
+		// Test Operations for Examiners
 		api.POST("/test/create", handlers.CreateNewTest)
 		api.PUT("/test/update-que-ans", handlers.UpdateQuestionsAndAnswersInTest)
 		api.GET("/test", handlers.GetAllTestsCreatedByUser)
@@ -95,6 +96,10 @@ func main() {
 		api.POST("/upload-image/:test_id", handlers.UploadImage)
 		api.GET("/image-url/:imagename", handlers.GetImageURL)
 		api.DELETE("/delete-image", handlers.DeleteImage)
+
+		// Test Portal (for candidates)
+		api.GET("/test-portal/assigned-tests/:userID", handlers.ListAssignedTestToUser)
+
 
 	}
 

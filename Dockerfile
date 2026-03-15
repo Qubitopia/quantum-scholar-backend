@@ -1,5 +1,5 @@
 # Stage 1: Build (Compiler runs on your native architecture)
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.1-alpine AS builder
 
 # Automatically provided by Docker Buildx
 ARG TARGETOS

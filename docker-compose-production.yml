@@ -1,0 +1,74 @@
+services:
+  traefik:
+    image: docker.io/traefik:v3.6.10
+    container_name: traefik
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.cloudflare.acme.email=${CLOUDFLARE_EMAIL}"
+      - "--certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "traefik_letsencrypt:/letsencrypt"
+
+  gin:
+    image: ghcr.io/qubitopia/quantum-scholar-backend:latest
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gin-http.rule=Host(`${SUB_DOMAIN}`)"
+      - "traefik.http.routers.gin-http.entrypoints=web"
+      - "traefik.http.routers.gin-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.gin.rule=Host(`${SUB_DOMAIN}`)"
+      - "traefik.http.routers.gin.entrypoints=websecure"
+      - "traefik.http.routers.gin.tls=true"
+      - "traefik.http.routers.gin.tls.certresolver=cloudflare"
+      - "traefik.http.services.gin.loadbalancer.server.port=${PORT}"
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  pgsql:
+    image: docker.io/postgres:18.3-alpine
+    environment:
+      POSTGRES_USER: ${PGSQL_USER}
+      POSTGRES_PASSWORD: ${PGSQL_PASSWORD}
+      POSTGRES_DB: ${PGSQL_NAME}
+      TZ: Asia/Kolkata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGSQL_USER} -d ${PGSQL_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    image: docker.io/valkey/valkey:9.0.3-alpine
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-h", "127.0.0.1", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+volumes:
+  pgdata:
+  redisdata:
+  traefik_letsencrypt:
