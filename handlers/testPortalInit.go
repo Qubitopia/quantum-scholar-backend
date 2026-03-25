@@ -295,7 +295,7 @@ func CreateQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, erro
 		return 0, err
 	}
 
-	return uint32(attempt.AnswerID), nil
+	return uint32(attempt.AnswerAttemptID), nil
 }
 
 // randInt returns a random int in [0, n) not in picked
@@ -346,7 +346,7 @@ func InitTestForCandidate(c *gin.Context) {
 	}
 
 	// Create question set for this candidate and store in AnswerAttempt table
-	answerID, err := CreateQuestionAnswerJSON(req.TestID, assignedTest.CandidateID)
+	answerAttemptID, err := CreateQuestionAnswerJSON(req.TestID, assignedTest.CandidateID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create AnswerAttempt: " + err.Error()})
 		return
@@ -360,10 +360,10 @@ func InitTestForCandidate(c *gin.Context) {
 	}
 
 	// Send success response with attempt id
-	c.JSON(http.StatusOK, gin.H{"message": "Test initialized successfully", "attempt_id": answerID})
+	c.JSON(http.StatusOK, gin.H{"message": "Test initialized successfully", "attempt_id": answerAttemptID})
 }
 
-func StartTestAttempt(c *gin.Context) {
+func StartTestAttemptOld(c *gin.Context) {
 	var req StartTestAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

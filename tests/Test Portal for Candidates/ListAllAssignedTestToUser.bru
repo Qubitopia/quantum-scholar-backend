@@ -1,0 +1,15 @@
+meta {
+  name: List all assigned tests to user
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/test-portal/assigned-tests
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}

@@ -54,8 +54,8 @@ type Test struct {
 // TestAssignedToUser model
 type TestAssignedToUser struct {
 	SomethingID      uint32 `json:"something_id" gorm:"primaryKey"`
-	TestID           uint32 `json:"test_id" gorm:"not null"`
-	CandidateID      uint32 `json:"candidate_id" gorm:"not null"`
+	TestID           uint32 `json:"test_id" gorm:"not null,index"`
+	CandidateID      uint32 `json:"candidate_id" gorm:"not null,index"`
 	CandidateEmail   string `json:"candidate_email" gorm:"not null"`
 	AttemptsAlloted  uint8  `json:"attempts_alloted" gorm:"not null"`
 	AttemptRemaining uint8  `json:"attempt_remaining"`
@@ -65,7 +65,7 @@ type TestAssignedToUser struct {
 
 // Answer model
 type AnswerAttempt struct {
-	AnswerID       uint64    `json:"answer_id" gorm:"primaryKey"`
+	AnswerAttemptID       uint64    `json:"answer_id" gorm:"primaryKey"`
 	TestID         uint32    `json:"test_id" gorm:"not null"`
 	CandidateID    uint32    `json:"candidate_id" gorm:"not null"`
 	StartTime      time.Time `json:"start_time"`

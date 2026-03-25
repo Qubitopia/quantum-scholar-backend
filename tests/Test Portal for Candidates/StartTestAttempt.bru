@@ -1,0 +1,19 @@
+meta {
+  name: Start Test Attempt
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/test-portal/start/{{test_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+vars:pre-request {
+  test_id: 1
+}

@@ -98,8 +98,9 @@ func main() {
 		api.DELETE("/delete-image", handlers.DeleteImage)
 
 		// Test Portal (for candidates)
-		api.GET("/test-portal/assigned-tests/:userID", handlers.ListAssignedTestToUser)
-
+		api.GET("/test-portal/assigned-tests", handlers.ListAssignedTestToUser)
+		api.GET("/test-portal/start/:test_id", handlers.StartTestAttempt)
+		api.POST("/test-portal/question", handlers.GetTestQuestion)
 
 	}
 
@@ -108,12 +109,12 @@ func main() {
 		webhook.POST("/razorpay", handlers.RazorpayWebhookHandler)
 	}
 
-	test_portal := r.Group("/test-portal")
-	{
-		test_portal.POST("/init", handlers.InitTestForCandidate)
-		test_portal.POST("/start", handlers.StartTestAttempt)
-		test_portal.POST("/update-attempt", handlers.UpdateTestAttempt)
-	}
+	// test_portal := r.Group("/test-portal")
+	// {
+	// 	test_portal.POST("/init", handlers.InitTestForCandidate)
+	// 	test_portal.POST("/start", handlers.StartTestAttempt)
+	// 	test_portal.POST("/update-attempt", handlers.UpdateTestAttempt)
+	// }
 
 	// Start server
 	log.Printf("Server starting on port set in variable PORT in .env")
