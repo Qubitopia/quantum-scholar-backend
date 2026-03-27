@@ -1,0 +1,54 @@
+meta {
+  name: Update Test attempt answer for Candidate
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/test-portal/update-attempt-answer
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+body:json {
+  {
+    "attempt_id": {{attempt_id}},
+    "answer": {
+      "sections": [
+          {
+              "answers": [
+                  {
+                      "questionNumber": 3,
+                      "CorrectOption": 2
+                  },
+                  {
+                      "questionNumber": 1,
+                      "CorrectOptions": [
+                          1,
+                          3
+                      ]
+                  }
+              ],
+              "sectionId": 1
+          },
+          {
+              "answers": [
+                  {
+                      "questionNumber": 1,
+                      "answer": "Answer to question 1"
+                  }
+              ],
+              "sectionId": 2
+          }
+      ]
+    }
+  }
+}
+
+vars:pre-request {
+  attempt_id: 22
+}

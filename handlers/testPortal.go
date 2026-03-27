@@ -18,6 +18,21 @@ type SendTestQuestionRequest struct {
 	QuestionNumber  int    `json:"question_number" binding:"required"`
 }
 
+type UpdateTestAttemptAnswerRequest struct {
+	AttemptId uint32 `json:"attempt_id" binding:"required"`
+	Answer    struct {
+		Sections []struct {
+			SectionId int `json:"sectionId"`
+			Answers   []struct {
+				QuestionNumber int     `json:"questionNumber"`
+				CorrectOption  *int    `json:"CorrectOption,omitempty"`
+				CorrectOptions []int   `json:"CorrectOptions,omitempty"`
+				Answer         *string `json:"answer,omitempty"`
+			} `json:"answers"`
+		} `json:"sections"`
+	} `json:"answer" binding:"required"`
+}
+
 func ListAssignedTestToUser(c *gin.Context) {
 	user, exists := c.Get("user")
 	if !exists {
@@ -244,6 +259,12 @@ func StartTestAttempt(c *gin.Context) {
 		return
 	}
 
+	// 4) Update StartTime of attempt to now
+	if err := database.DB.Model(&models.AnswerAttempt{}).Where("answer_attempt_id = ?", answerAttemptID).Update("start_time", time.Now()).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start test attempt"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"answer_attempt_id": answerAttemptID,
 		"test_id":           testID,
@@ -330,4 +351,101 @@ func GetTestQuestion(c *gin.Context) {
 
 	c.JSON(http.StatusBadRequest, gin.H{"error": "Question not found"})
 
+}
+
+func UpdateTestAttemptAnswer(c *gin.Context) {
+	// 1) Get candidate from context
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	candidate, ok := user.(models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user from context"})
+		return
+	}
+
+	// 2) Get and validate input JSON
+	var req UpdateTestAttemptAnswerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	
+
+	// Check if the attempt exists and belongs to the user
+	var attempt models.AnswerAttempt
+	if err := database.DB.Where("answer_id = ? AND candidate_id = ?", req.AttemptId, candidate.ID).First(&attempt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Attempt not found"})
+		return
+	}
+
+	// Ensure the attempt has been started and is within the allowed duration (+5 min grace)
+	if attempt.StartTime.IsZero() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Test attempt has not been started"})
+		return
+	}
+	allowedEnd := attempt.StartTime.Add(time.Duration(attempt.Duration) * time.Minute).Add(5 * time.Minute)
+	if time.Now().After(allowedEnd) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Time window for this attempt has expired"})
+		return
+	}
+
+
+	// Validate request structure matches UpdateTestAttemptAnswerRequest
+	if len(req.Answer.Sections) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Answer must contain at least one section"})
+		return
+	}
+	lastSectionId := 0
+	for i, section := range req.Answer.Sections {
+		if section.SectionId <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Each section must have a valid sectionId (>0)"})
+			return
+		}
+		if section.Answers == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Each section must contain answers array"})
+			return
+		}
+		lastSectionId = section.SectionId
+		for _, ans := range section.Answers {
+			if ans.QuestionNumber <= 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Each answer must have a valid questionNumber (>0)"})
+				return
+			}
+			if ans.CorrectOption == nil && len(ans.CorrectOptions) == 0 && (ans.Answer == nil || *ans.Answer == "") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Each answer must have one of: CorrectOption, CorrectOptions, or answer"})
+				return
+			}
+		}
+		// Ensure section ids are sequential and match index+1
+		if section.SectionId != i+1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "SectionId must be sequential starting from 1"})
+			return
+		}
+	}
+	if len(req.Answer.Sections) != lastSectionId {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Number of sections mismatch"})
+		return
+	}
+
+
+
+	// Update the answers and reset marks
+	answerJSONBytes, err := json.Marshal(req.Answer)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal answer"})
+		return
+	}
+	attempt.AnswerJSON = string(answerJSONBytes)
+	attempt.AchievedMarks = 0
+
+	if err := database.DB.Save(&attempt).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update test attempt"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Test attempt updated successfully"})
 }
