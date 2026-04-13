@@ -122,31 +122,6 @@ func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, json
 		return 0, nil, err
 	}
 
-	// Build stored-test metadata JSON without the per-section questions payload.
-	type storedSectionMeta struct {
-		SectionID         int    `json:"section_id"`
-		Title             string `json:"title"`
-		NumberOfQuestions int    `json:"number_of_questions"`
-	}
-	type storedTestMeta struct {
-		Title    string              `json:"title"`
-		Sections []storedSectionMeta `json:"sections"`
-	}
-
-	metaTest := storedTestMeta{Title: sTest.Title}
-	for _, sec := range sTest.Sections {
-		metaTest.Sections = append(metaTest.Sections, storedSectionMeta{
-			SectionID:         sec.SectionID,
-			Title:             sec.Title,
-			NumberOfQuestions: sec.QuestionsToDisplay,
-		})
-	}
-
-	metaBytes, err := json.Marshal(metaTest)
-	if err != nil {
-		return 0, nil, err
-	}
-
 	// 4) Define candidate-facing output structures (like tests/q1.json)
 	type outQuestion struct {
 		FailureMarks   int      `json:"failureMarks"`
@@ -227,7 +202,7 @@ func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, json
 		return 0, nil, err
 	}
 
-	return uint32(attempt.AnswerAttemptID), json.RawMessage(metaBytes), nil
+	return uint32(attempt.AnswerAttemptID), json.RawMessage(qb), nil
 }
 
 func StartTestAttempt(c *gin.Context) {
@@ -253,7 +228,7 @@ func StartTestAttempt(c *gin.Context) {
 	}
 
 	// 3) Create question set for candidate and store in AnswerAttempt
-	answerAttemptID, testInfoJSON, err := createQuestionAnswerJSON(uint32(testID), candidate.ID)
+	answerAttemptID, testJSON, err := createQuestionAnswerJSON(uint32(testID), candidate.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create question set"})
 		return
@@ -268,90 +243,10 @@ func StartTestAttempt(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"answer_attempt_id": answerAttemptID,
 		"test_id":           testID,
-		"test":              testInfoJSON,
+		"test":              testJSON,
 	})
 }
 
-func GetTestQuestion(c *gin.Context) {
-	// This handler will get answer_attempt_id, section_number and question_number as input and return the question JSON for that question number which will consist of question text, question_type, options (if mcq/msq), success marks & failure marks.
-	// 1) Get candidate from context
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
-		return
-	}
-
-	candidate, ok := user.(models.User)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user from context"})
-		return
-	}
-
-	// 2) Get and validate input JSON
-	var req SendTestQuestionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 3) Fetch AnswerAttempt by id  where candidate_id = candidate.ID and validate ownership
-	var attempt models.AnswerAttempt
-	if err := database.DB.Where("answer_attempt_id = ? AND candidate_id = ?", req.AnswerAttemptID, candidate.ID).First(&attempt).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid attempt ID"})
-		return
-	}
-
-	// 4) Check if attempt is still active based on start time and duration + 5 mins grace period
-	if !attempt.StartTime.IsZero() {
-		now := time.Now()
-		endTime := attempt.StartTime.Add(time.Duration(attempt.Duration)*time.Minute + 5*time.Minute)
-		if now.After(endTime) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Test attempt has expired"})
-			return
-		}
-	}
-
-	// 5) Unmarshal attempt.QuestionJSON and return the question matching section_number and question_number(as per index)
-	type outQuestion struct {
-		FailureMarks   int      `json:"failureMarks"`
-		QuestionNumber int      `json:"questionNumber"`
-		QuestionText   string   `json:"questionText"`
-		SuccessMarks   int      `json:"successMarks"`
-		Type           string   `json:"type"`
-		Options        []string `json:"options,omitempty"`
-	}
-	type outSection struct {
-		SectionID int           `json:"sectionId"`
-		Title     string        `json:"title"`
-		Questions []outQuestion `json:"questions"`
-	}
-	type outTest struct {
-		Sections []outSection `json:"sections"`
-		Title    string       `json:"title"`
-	}
-
-	var oTest outTest
-	if err := json.Unmarshal([]byte(attempt.QuestionJSON), &oTest); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse question JSON"})
-		return
-	}
-
-	for _, sec := range oTest.Sections {
-		if sec.SectionID == req.SectionNumber {
-			for _, q := range sec.Questions {
-				if q.QuestionNumber == req.QuestionNumber {
-					c.JSON(http.StatusOK, gin.H{
-						"question": q,
-					})
-					return
-				}
-			}
-		}
-	}
-
-	c.JSON(http.StatusBadRequest, gin.H{"error": "Question not found"})
-
-}
 
 func UpdateTestAttemptAnswer(c *gin.Context) {
 	// 1) Get candidate from context

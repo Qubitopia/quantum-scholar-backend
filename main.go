@@ -100,7 +100,6 @@ func main() {
 		// Test Portal (for candidates)
 		api.GET("/test-portal/assigned-tests", handlers.ListAssignedTestToUser)
 		api.GET("/test-portal/start/:test_id", handlers.StartTestAttempt)
-		api.POST("/test-portal/question", handlers.GetTestQuestion)
 		api.POST("/test-portal/update-attempt-answer", handlers.UpdateTestAttemptAnswer)
 
 	}
