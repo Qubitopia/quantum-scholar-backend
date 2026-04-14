@@ -85,11 +85,11 @@ func ListAssignedTestToUser(c *gin.Context) {
 	})
 }
 
-func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, json.RawMessage, error) {
+func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, uint8, json.RawMessage, error) {
 	// 1) Fetch test by id to get QuestionAnswerJSON
 	var test models.Test
 	if err := database.DB.Where("test_id = ?", test_id).First(&test).Error; err != nil {
-		return 0, nil, err
+		return 0, 0, nil, err
 	}
 
 	// 2) Define structures matching stored Test.QuestionAnswerJSON (examiner view)
@@ -119,7 +119,7 @@ func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, json
 	// 3) Unmarshal stored JSON
 	var sTest storedTest
 	if err := json.Unmarshal([]byte(test.QuestionAnswerJSON), &sTest); err != nil {
-		return 0, nil, err
+		return 0, 0, nil, err
 	}
 
 	// 4) Define candidate-facing output structures (like tests/q1.json)
@@ -183,7 +183,7 @@ func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, json
 	// 6) Marshal output JSON for storing in AnswerAttempt.QuestionJSON
 	qb, err := json.Marshal(oTest)
 	if err != nil {
-		return 0, nil, err
+		return 0, 0, nil, err
 	}
 
 	// 7) Store in AnswerAttempt table
@@ -199,10 +199,10 @@ func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, json
 	}
 
 	if err := database.DB.Create(&attempt).Error; err != nil {
-		return 0, nil, err
+		return 0, 0, nil, err
 	}
 
-	return uint32(attempt.AnswerAttemptID), json.RawMessage(qb), nil
+	return uint32(attempt.AnswerAttemptID), test.TestDuration, json.RawMessage(qb), nil
 }
 
 func StartTestAttempt(c *gin.Context) {
@@ -228,7 +228,7 @@ func StartTestAttempt(c *gin.Context) {
 	}
 
 	// 3) Create question set for candidate and store in AnswerAttempt
-	answerAttemptID, testJSON, err := createQuestionAnswerJSON(uint32(testID), candidate.ID)
+	answerAttemptID, testDuration, testJSON, err := createQuestionAnswerJSON(uint32(testID), candidate.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create question set"})
 		return
@@ -243,10 +243,10 @@ func StartTestAttempt(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"answer_attempt_id": answerAttemptID,
 		"test_id":           testID,
+		"test_duration":     testDuration,
 		"test":              testJSON,
 	})
 }
-
 
 func UpdateTestAttemptAnswer(c *gin.Context) {
 	// 1) Get candidate from context
@@ -268,11 +268,10 @@ func UpdateTestAttemptAnswer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
 
 	// Check if the attempt exists and belongs to the user
 	var attempt models.AnswerAttempt
-	if err := database.DB.Where("answer_id = ? AND candidate_id = ?", req.AttemptId, candidate.ID).First(&attempt).Error; err != nil {
+	if err := database.DB.Where("answer_attempt_id = ? AND candidate_id = ?", req.AttemptId, candidate.ID).First(&attempt).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Attempt not found"})
 		return
 	}
@@ -287,7 +286,6 @@ func UpdateTestAttemptAnswer(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Time window for this attempt has expired"})
 		return
 	}
-
 
 	// Validate request structure matches UpdateTestAttemptAnswerRequest
 	if len(req.Answer.Sections) == 0 {
@@ -325,8 +323,6 @@ func UpdateTestAttemptAnswer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Number of sections mismatch"})
 		return
 	}
-
-
 
 	// Update the answers and reset marks
 	answerJSONBytes, err := json.Marshal(req.Answer)

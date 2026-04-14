@@ -389,7 +389,7 @@ func StartTestAttemptOld(c *gin.Context) {
 
 	// Check if the start time is null, if not then return error
 	var attempt models.AnswerAttempt
-	if err := database.DB.Where("answer_id = ? AND test_id = ?", req.AttemptID, req.TestID).First(&attempt).Error; err != nil {
+	if err := database.DB.Where("answer_attempt_id = ? AND test_id = ?", req.AttemptID, req.TestID).First(&attempt).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Your test attempt has not been initialized"})
 		return
 	}
@@ -483,7 +483,7 @@ func UpdateTestAttempt(c *gin.Context) {
 
 	// Check if the attempt exists and belongs to the test
 	var attempt models.AnswerAttempt
-	if err := database.DB.Where("answer_id = ?", req.AttemptId).First(&attempt).Error; err != nil {
+	if err := database.DB.Where("answer_attempt_id = ?", req.AttemptId).First(&attempt).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Attempt not found"})
 		return
 	}
