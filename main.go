@@ -33,9 +33,6 @@ func main() {
 	mail.LoadEmailTemplates()
 	mail.InitEmail()
 
-	// test
-	handlers.CreateQuestionAnswerJSON(1, 1)
-
 	// Initialize Gin router
 	r := gin.Default()
 	r.TrustedPlatform = gin.PlatformCloudflare
@@ -60,10 +57,6 @@ func main() {
 	{
 		auth.POST("/login", handlers.Login)
 		auth.POST("/verify", handlers.VerifyMagicLink)
-
-		// Test Portal (for candidates)
-		auth.POST("/test-portal/login", handlers.TestPortalLogin)
-		auth.POST("/test-portal/verify", handlers.TestPortalVerify)
 	}
 
 	// Protected routes
@@ -90,6 +83,7 @@ func main() {
 		api.PUT("/test/add-candidates", handlers.AddCandidatesToTest)
 		api.GET("/test/:id/candidates", handlers.GetAllCandidatesAssignedToTest)
 		api.PUT("/test/remove-candidates", handlers.RemoveCandidatesFromTest)
+		api.GET("/test/evaluate/:test_id", handlers.EvaluateTest)
 
 		// Image upload
 		api.POST("/bulk-image-upload/:test_id", handlers.BulkImageUpload)
@@ -101,6 +95,7 @@ func main() {
 		api.GET("/test-portal/assigned-tests", handlers.ListAssignedTestToUser)
 		api.GET("/test-portal/start/:test_id", handlers.StartTestAttempt)
 		api.POST("/test-portal/update-attempt-answer", handlers.UpdateTestAttemptAnswer)
+		api.GET("/test-portal/score/:test_id", handlers.GetScoreOfAllAttempts)
 
 	}
 
@@ -109,12 +104,6 @@ func main() {
 		webhook.POST("/razorpay", handlers.RazorpayWebhookHandler)
 	}
 
-	// test_portal := r.Group("/test-portal")
-	// {
-	// 	test_portal.POST("/init", handlers.InitTestForCandidate)
-	// 	test_portal.POST("/start", handlers.StartTestAttempt)
-	// 	test_portal.POST("/update-attempt", handlers.UpdateTestAttempt)
-	// }
 
 	// Start server
 	log.Printf("Server starting on port set in variable PORT in .env")

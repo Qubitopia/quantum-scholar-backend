@@ -50,6 +50,9 @@ var (
 	RZP_KEY_ID         string
 	RZP_KEY_SECRET     string
 	RZP_WEBHOOK_SECRET string
+
+	// Gemini
+	GEMINI_API_KEY string
 )
 
 // LoadEnvVariables loads all required environment variables into global variables
@@ -109,4 +112,7 @@ func LoadEnvVariables() {
 	RZP_KEY_ID = getEnv("RZP_KEY_ID")
 	RZP_KEY_SECRET = getEnv("RZP_KEY_SECRET")
 	RZP_WEBHOOK_SECRET = getEnv("RZP_WEBHOOK_SECRET")
+
+	// Gemini
+	GEMINI_API_KEY = getEnv("GEMINI_API_KEY")
 }

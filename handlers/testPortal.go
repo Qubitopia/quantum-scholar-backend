@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -83,6 +84,18 @@ func ListAssignedTestToUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"tests": testInfoList,
 	})
+}
+
+// randInt returns a random int in [0, n) not in picked
+func randInt(n int, picked map[int]bool) int {
+	for {
+		b := make([]byte, 1)
+		rand.Read(b)
+		idx := int(b[0]) % n
+		if !picked[idx] {
+			return idx
+		}
+	}
 }
 
 func createQuestionAnswerJSON(test_id uint32, candidate_id uint32) (uint32, uint8, json.RawMessage, error) {

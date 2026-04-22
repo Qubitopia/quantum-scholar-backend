@@ -13,6 +13,7 @@ var (
 	oldUserTemplate  string
 	invoiceTemplate  string
 	newLoginTemplate string
+	scoreTemplate    string
 	auth             smtp.Auth
 )
 
@@ -439,6 +440,98 @@ func LoadEmailTemplates() {
   </div>
 </body>
 </html>`
+
+	scoreTemplate = `<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f7;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      background: #ffffff;
+      margin: 40px auto;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    h2 {
+      color: #333;
+    }
+    p {
+      font-size: 16px;
+      color: #555;
+      line-height: 1.6;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .button {
+      background-color: #007BFF;
+      color: white !important;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 16px;
+      display: inline-block;
+      font-weight: bold;
+    }
+    .footer {
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+      margin-top: 40px;
+    }
+    .footer a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+        margin: 20px;
+      }
+      .button {
+        width: 100%%;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Test Evaluation Complete</h2>
+    
+    <p>Hello %s,</p>
+    
+    <p>Your test <strong>%s</strong> has been successfully evaluated.</p>
+    
+    <p><strong>Score:</strong> %d / %d</p>
+    
+    <p>You can now log in to your account to review your performance and continue your learning journey.</p>
+
+    <div class="button-container">
+      <a href="%s/results" class="button">View Results</a>
+    </div>
+
+    <p>If you have any questions or need assistance, feel free to contact our support team.</p>
+
+    <div class="footer">
+      <p>You are receiving this email because you are registered with Quantum Scholar.<br />
+        If you'd like to stop receiving these emails, 
+        <a href="%s/mail/unsubscribe">unsubscribe here</a>.
+      </p>
+      <p>Qubitopia Inc. | India | <a href="%s/privacypolicy">Privacy Policy</a></p>
+    </div>
+  </div>
+</body>
+</html>`
 }
 
 func InitEmail() {
@@ -509,6 +602,18 @@ func SendEmailNotificationOfUserLogin(to string, Name string, timestamp string, 
 	body := fmt.Sprintf(newLoginTemplate, Name, to, timestamp, ipAddress, userAgent, database.BASE_URL, database.BASE_URL, database.BASE_URL)
 
 	// Send email
+	err := sendEmail(to, subject, body)
+	if err != nil {
+		log.Println("Failed to send email:", err)
+		return err
+	}
+	log.Println("✅ Email sent successfully.")
+	return nil
+}
+
+func SendEmailTestEvaluation(to string, name string, testTitle string, achievedMarks int, totalMarks int) error {
+	subject := fmt.Sprintf("Subject: %s evaluation result\r\n", testTitle)
+	body := fmt.Sprintf(scoreTemplate, name, testTitle, achievedMarks, totalMarks, database.BASE_URL, database.BASE_URL, database.BASE_URL)
 	err := sendEmail(to, subject, body)
 	if err != nil {
 		log.Println("Failed to send email:", err)

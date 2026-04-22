@@ -1,0 +1,24 @@
+meta {
+  name: Get Score of All Attempts of Test
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/test-portal/score/{{test_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+vars:pre-request {
+  test_id: 1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

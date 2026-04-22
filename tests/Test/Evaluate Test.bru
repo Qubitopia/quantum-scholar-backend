@@ -1,0 +1,24 @@
+meta {
+  name: Evaluate Test
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/api/test/evaluate/{{test_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt_token}}
+}
+
+vars:pre-request {
+  test_id: 1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
