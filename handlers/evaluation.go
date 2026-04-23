@@ -139,6 +139,8 @@ func EvaluateTest(c *gin.Context) {
 	}
 
 	attemptCountByCandidate := make(map[uint32]int)
+	bestScoreByCandidate := make(map[uint32]int16)
+	hasScoreByCandidate := make(map[uint32]bool)
 	for i := range attempts {
 		attempt := &attempts[i]
 		attemptCountByCandidate[attempt.CandidateID]++
@@ -149,11 +151,16 @@ func EvaluateTest(c *gin.Context) {
 			continue
 		}
 
-		attempt.AchievedMarks = clampToUint8(score)
+		attempt.AchievedMarks = int16(score)
 		attempt.EvaluationJSON = resultJSON
 		if err := database.DB.Save(attempt).Error; err != nil {
 			log.Printf("evaluate test %d attempt %d: failed to save attempt: %v", testID, attempt.AnswerAttemptID, err)
 			continue
+		}
+
+		if !hasScoreByCandidate[attempt.CandidateID] || attempt.AchievedMarks > bestScoreByCandidate[attempt.CandidateID] {
+			bestScoreByCandidate[attempt.CandidateID] = attempt.AchievedMarks
+			hasScoreByCandidate[attempt.CandidateID] = true
 		}
 
 		var candidate models.User
@@ -174,6 +181,9 @@ func EvaluateTest(c *gin.Context) {
 			remaining = 0
 		}
 		assignment.AttemptRemaining = uint8(remaining)
+		if hasScoreByCandidate[candidateID] {
+			assignment.BestScore = bestScoreByCandidate[candidateID]
+		}
 		if err := database.DB.Save(assignment).Error; err != nil {
 			log.Printf("evaluate test %d candidate %d: failed to update attempts remaining: %v", testID, candidateID, err)
 		}

@@ -413,6 +413,7 @@ func AddCandidatesToTest(c *gin.Context) {
 			CandidateEmail:   candidate.Email,
 			AttemptsAlloted:  req.NumberOfAttempts,
 			AttemptRemaining: req.NumberOfAttempts,
+			BestScore:        0,
 		}
 		assignmentsToCreate = append(assignmentsToCreate, assignment)
 	}
@@ -477,9 +478,10 @@ func GetAllCandidatesAssignedToTest(c *gin.Context) {
 		CandidateEmail   string `json:"candidate_email"`
 		AttemptsAlloted  uint8  `json:"attempts_alloted"`
 		AttemptRemaining uint8  `json:"attempt_remaining"`
+		BestScore        int16  `json:"best_score"`
 	}
 	if err := database.DB.Model(&models.TestAssignedToUser{}).
-		Select("candidate_email, attempts_alloted, attempt_remaining").
+		Select("candidate_email, attempts_alloted, attempt_remaining, best_score").
 		Where("test_id = ?", test.TestID).
 		Scan(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch candidates"})

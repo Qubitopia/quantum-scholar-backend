@@ -59,6 +59,7 @@ type TestAssignedToUser struct {
 	CandidateEmail   string `json:"candidate_email" gorm:"not null"`
 	AttemptsAlloted  uint8  `json:"attempts_alloted" gorm:"not null"`
 	AttemptRemaining uint8  `json:"attempt_remaining"`
+	BestScore        int16  `json:"best_score"`
 	// Foreign keys
 	// Candidate User `gorm:"foreignKey:CandidateID"`
 }
@@ -73,7 +74,7 @@ type AnswerAttempt struct {
 	QuestionJSON    string    `json:"question_json" gorm:"type:jsonb"`
 	AnswerJSON      string    `json:"answer_json" gorm:"type:jsonb"`
 	EvaluationJSON  string    `json:"evaluation_json" gorm:"type:jsonb"`
-	AchievedMarks   uint8     `json:"achieved_marks"`
+	AchievedMarks   int16     `json:"achieved_marks"`
 	// Foreign keys
 	// Candidate User `gorm:"foreignKey:CandidateID"`
 }
